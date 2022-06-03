@@ -91,7 +91,7 @@ def request_df(url: str, return_query: bool = False, return_res: bool = False, d
     res = request_data(url, **kwargs)
     print(f"res of query is {res}")
     try:
-        df = df_formatter(res)
+        df = df_formatter(res, **kwargs)
         if 'query' in res.keys():
             query = res['query']
         else:

@@ -196,12 +196,13 @@ class KaikoData:
         return f"KaikoData setup with\n- URL\n\t {self.url},\n- Required parameters:\n\t{self.req_params}," \
                f"\n- Optional parameters:\n\t{self.params}"
 
-    def __init__(self, endpoint, req_params: dict, params: dict = {}, client=None, pagination=True, **kwargs):
+    def __init__(self, endpoint, req_params: dict, params: dict = {}, client=None, pagination=True, extra_args: dict = {}, **kwargs):
         self.client = client or KaikoClient()
         self.endpoint = self.client.base_url + endpoint
         self.params = params
         self.req_params = req_params
         self._form_url()
+        self.extra_args = extra_args
 
         self.pagination = pagination
 
@@ -246,7 +247,7 @@ class KaikoData:
                 self.req_params[key] = kwargs[key]
 
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -255,12 +256,13 @@ class KaikoData:
     def _request_api(self):
         print("inside requestion api ")
         self.df, self.query_api, self.query_res = ut.request_df(self.url,
-                                                return_query=True,
-                                                return_res=True,
-                                                headers=self.client.headers,
-                                                params=self.params,
-                                                df_formatter=self.df_formatter,
-                                                pagination=self.pagination,
+                                                return_query = True,
+                                                return_res = True,
+                                                headers = self.client.headers,
+                                                params = self.params,
+                                                df_formatter = self.df_formatter,
+                                                pagination = self.pagination,
+                                                extra_args = self.extra_args,
                                                 )
         print("done:", self.df)
 
@@ -318,26 +320,207 @@ class Trades(KaikoData):
         self._request_api()
 
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
 
-class OrderBookSnapshotsFull(KaikoData):
+class OrderBookSnapshots(KaikoData):
     """
-    Full Order-book snapshots data
-
+    Full, Raw, Depth, Slippage Order Book Snapshots data.
+    
+    type_of_ob is Full by default
     data_version is latest by default
     instrument_class is spot by default
+    page_size is 100 by default
 
-    Full:
+    ---------------------------------------------------------------------   Full   ---------------------------------------------------------------------
+    
+    Full Order-book snapshots data
     Gives access to one month of historical 10% order book snapshots. The full endpoint returns 
     all the following order book data: the snapshot itself (bids and asks), the depth of the order book 
     (the cummulative volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 
     4%, 6%, 8% and 10% from the mid price), the spread, the mid price and, when the slippage parameter is not empty, 
     the percentage of slippage for a given order size, either calculated from the best bid/ask or calculated from 
     the mid price. All data is returned in descending order.
+    
+    Parameters :
+
+    Parameter	            Required	Description
+    continuation_token  	No	        See Pagination.
+    data_version	        Yes	        The data version. (v1, v2 ... or latest)
+    end_time	            No	        Ending time in ISO 8601 (exclusive).
+    exchange	            Yes	        Exchange code. See Exchanges Reference Data Endpoint.
+    instrument_class	    Yes	        Instrument class. See Instruments Reference Data Endpoint.
+    instrument          	Yes	        Instrument code. See Instruments Reference Data Endpoint.
+    limit_orders        	No	        Number of orders to return on bid and ask side per snapshot. To retreive the best bid/ask, set this parameter to 1 (default: 10)
+    page_size	            No	        Number of snapshots to return. See Pagination (default: 10, max: 100).
+    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
+    start_time	            No	        Starting time in ISO 8601 (inclusive).
+    slippage	            No	        Order size (in quote asset) for which to calculate the percentage of slippage. Default: 0. When null is returned, not enough volume is present on the order book to execute the order.
+    slippage_ref	        No	        Price point for which to calculate slippage from. Either from the mid price (mid_price) or from the best bid/ask (best). Default: mid_price.
+
+    Fields:
+
+    Field	            Description
+    poll_timestamp	    The timestamp at which the raw data snapshot was taken.
+    poll_date	        The date at which the raw data snapshot was taken.
+    timestamp	        The timestamp provided by the exchange. null when not provided.
+    bid_volume_x	    The volume of bids placed within 0 and x% of the midprice.
+    ask_volume_x	    The volume of asks placed within 0 and x% of the midprice.
+    spread	            The difference between the best bid and the best ask at the time the snapshot was taken.
+    mid_price	        The mid price between the best bid and the best ask.
+    ask_slippage	    The percentage price slippage for a market buy order placed at the time that the order book snapshot was taken.
+    bid_slippage	    The percentage price slippage for a market sell order placed at the time that the order book snapshot was taken.
+    asks	            The sell orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to sell, displayed in the base currency. price is displayed in the quote currency.
+    bids	            The buy orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to buy, displayed in the base currency. price is displayed in the quote currency.
+ 
+    ---------------------------------------------------------------------   Raw   ---------------------------------------------------------------------
+
+    Identical to Full but only returns the raw snapshots of bids and asks without 
+    any additional metrics. The Full specific parameters (such as slippage and slippage_ref) are disabled but won't 
+    yield any errors when used. All data is returned in descending order.
+
+    Parameters:
+
+    Parameter	            Required	Description
+    continuation_token	    No	See Pagination.
+    data_version	        Yes	The data version. (v1, v2 ... or latest)
+    end_time	            No	Ending time in ISO 8601 (exclusive).
+    exchange	            Yes	Exchange code. See Exchanges Reference Data Endpoint.
+    instrument_class	    Yes	Instrument class. See Instruments Reference Data Endpoint.
+    instrument          	Yes	Instrument code. See Instruments Reference Data Endpoint.
+    limit_orders	        No	Number of orders to return on bid and ask side per snapshot. To retreive the best bid/ask, set this parameter to 1 (default: 10)
+    page_size	            No	Number of snapshots to return. See Pagination (default: 10, max: 100).
+    sort	                No	Return the data in ascending (asc) or descending (desc) order. Default desc
+    start_time	            No	Starting time in ISO 8601 (inclusive).
+    
+    Fields:
+
+    Field	            Description
+    poll_timestamp  	The timestamp at which the raw data snapshot was taken.
+    poll_date	        The date at which the raw data snapshot was taken.
+    timestamp	        The timestamp provided by the exchange. null when not provided.
+    asks	            The sell orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to sell, displayed in the base currency. price is displayed in the quote currency.
+    bids	            The buy orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to buy, displayed in the base currency. price is displayed in the quote currency.
+ 
+    ---------------------------------------------------------------------   Depth   ---------------------------------------------------------------------
+    
+    Identical to Full  but only returns metrics on the depth of the order book 
+    (the cummulative volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 
+    2%, 4%, 6%, 8% and 10% from the mid price) per snapshot. The Full specific parameters (such as slippage, slippage_ref 
+    and limit_orders) are disabled but won't yield any errors when used. All data is returned in descending order.
+
+    data_version is latest by default
+    instrument_class is spot by default
+
+
+    Parameters:
+
+    Parameter	            Required	Description
+    continuation_token	    No	        See Pagination.
+    data_version	        Yes	        The data version. (v1, v2 ... or latest)
+    end_time   	            No	        Ending time in ISO 8601 (exclusive).
+    exchange	            Yes	        Exchange code. See Exchanges Reference Data Endpoint.
+    instrument_class	    Yes	        Instrument class. See Instruments Reference Data Endpoint.
+    instrument	            Yes	        Instrument code. See Instruments Reference Data Endpoint.
+    page_size             	No	        Number of snapshots to return data for. See Pagination (default: 10, max: 100).
+    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
+    start_time           	No	        Starting time in ISO 8601 (inclusive).
+
+    Fields:
+
+    Field	            Description
+    poll_timestamp	    The timestamp at which the raw data snapshot was taken.
+    poll_date	        The date at which the raw data snapshot was taken.
+    timestamp	        The timestamp provided by the exchange. null when not provided.
+    bid_volume_x	    The volume of bids placed within 0 and x% of the midprice.
+    ask_volume_x	    The volume of asks placed within 0 and x% of the midprice.
+ 
+
+    ---------------------------------------------------------------------   Slippage   ---------------------------------------------------------------------
+
+    Identical to Full but only returns slippage for a given order size, either 
+    calculated from the best bid/ask or calculated from the mid price. The Full and Raw specific parameter limit_orders 
+    is disabled but won't yield any errors when used. All data is returned in descending order.
+
+    Parameters:
+
+    Parameter	            Required	Description
+    continuation_token  	No	        See Pagination.
+    data_version	        Yes	        The data version. (v1, v2 ... or latest)
+    end_time	            No	        Ending time in ISO 8601 (exclusive).
+    exchange	            Yes	        Exchange code. See Exchanges Reference Data Endpoint.
+    instrument_class	    Yes	        Instrument class. See Instruments Reference Data Endpoint.
+    instrument	            Yes	        Instrument code. See Instruments Reference Data Endpoint.
+    page_size	            No	        Number of snapshots to return data for. See Pagination (default: 10, max: 100).
+    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
+    start_time	            No	        Starting time in ISO 8601 (inclusive).
+    slippage	            No	        Order size (in quote asset) for which to calculate the percentage of slippage. Default: 0. When null is returned, not enough volume is present on the order book to execute the order.
+    slippage_ref	        No	        Price point for which to calculate slippage from. Either from the mid price (mid_price) or from the best bid/ask (best). Default: mid_price.
+
+    Fields:
+
+    Field	            Description
+    poll_timestamp	    The timestamp at which the raw data snapshot was taken.
+    poll_date	        The date at which the raw data snapshot was taken.
+    timestamp	        The timestamp provided by the exchange. null when not provided.
+    ask_slippage	    The percentage price slippage for a market buy order placed at the time that the order book snapshot was taken.
+    bid_slippage	    The percentage price slippage for a market sell order placed at the time that the order book snapshot was taken.
+
+    """
+
+    def __init__(self, exchange: str, instrument: str, type_of_ob: str = 'Full', instrument_class: str = 'spot', params: dict = dict(page_size = 100),
+                    data_version: str = 'latest', client: KaikoClient = None, **kwargs):
+        # Initialize endpoint required parameters
+        assert type_of_ob in ['Full', 'Raw', 'Depth', 'Slippage'], "type_of_ob needs to be either Full, Raw, Depth, Slippage"
+
+        if type_of_ob in ['Full', 'Raw']:
+            self.parameter_space = 'continuation_token,end_time,limit_orders,page_size,sort,start_time,slippage,slippage_ref'.split(',')
+        else:
+            self.parameter_space = 'continuation_token,end_time,page_size,sort,start_time'.slipt(',')
+        
+        self.extra_args = {'type_of_ob': type_of_ob}
+
+        endpoints = {'Full': _URL_ORDER_BOOK_SNAPSHOTS_FULL, 'Raw': _URL_ORDER_BOOK_SNAPSHOTS_RAW, 'Depth': _URL_ORDER_BOOK_SNAPSHOTS_DEPTH, 'Slippage': _URL_ORDER_BOOK_SNAPSHOTS_SLIPPAGE}
+        endpoint = endpoints[type_of_ob]
+        self.req_params = dict(commodity = 'order_book_snapshots',
+                                data_version = data_version,
+                                exchange = exchange,
+                                instrument_class = instrument_class,
+                                instrument = instrument)
+
+        KaikoData.__init__(self, endpoint, self.req_params, params, client, extra_args = self.extra_args, **kwargs)
+        
+        self._request_api()
+        if len(self.df) == 0:
+            print(f'No data was found for the time range selected. \n{self.query_api}')
+            print('NB: only one month of historical order book snapshots is available from the API. Please setup a '
+                  'Data Feed delivery if you are trying to access data older than a month.')
+
+    @staticmethod
+    def df_formatter(res, **kwargs):
+        assert kwargs.keys()
+        df = pd.DataFrame(res['data'], dtype='float')
+        df.set_index('poll_timestamp', inplace=True)
+        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
+        if kwargs['type_of_ob'] in ['Depth', 'Full']:
+            df = add_price_levels(df)
+        return df
+
+class OrderBookSnapshotsFull(KaikoData):
+    """
+    Full Order-book snapshots data
+    Gives access to one month of historical 10% order book snapshots. The full endpoint returns 
+    all the following order book data: the snapshot itself (bids and asks), the depth of the order book 
+    (the cummulative volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 
+    4%, 6%, 8% and 10% from the mid price), the spread, the mid price and, when the slippage parameter is not empty, 
+    the percentage of slippage for a given order size, either calculated from the best bid/ask or calculated from 
+    the mid price. All data is returned in descending order.
+
+    data_version is latest by default
+    instrument_class is spot by default
 
     Parameters :
 
@@ -372,7 +555,7 @@ class OrderBookSnapshotsFull(KaikoData):
                 data_version: str = 'latest', client: KaikoClient = None, **kwargs):
 
         # Initialize endpoint required parameters
-        self.parameter_space = 'continuation_token, end_time, limit_orders, page_size, sort, start_time, slippage, slippage_ref'.split(',')
+        self.parameter_space = 'continuation_token,end_time,limit_orders,page_size,sort,start_time,slippage,slippage_ref'.split(',')
         self.req_params = dict(commodity='order_book_snapshots',
                                data_version=data_version,
                                exchange=exchange,
@@ -392,7 +575,7 @@ class OrderBookSnapshotsFull(KaikoData):
                   'Data Feed delivery if you are trying to access data older than a month.')
 ### NEEDS TO BE MODIFIED ???
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('poll_timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -479,7 +662,7 @@ class OrderBookSnapshotsRaw(KaikoData):
                   'Data Feed delivery if you are trying to access data older than a month.')
 #### NEEDS TO BE MODIFIED ???
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('poll_timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -539,7 +722,7 @@ class OrderBookSnapshotsDepth(KaikoData):
                   'Data Feed delivery if you are trying to access data older than a month.')
 ##### NEEDS TO BE MODIFIED ????
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('poll_timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -599,7 +782,7 @@ class OrderBookSnapshotsSlippage(KaikoData):
                   'Data Feed delivery if you are trying to access data older than a month.')
 ### needs to be modified ???
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('poll_timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -669,7 +852,7 @@ class OrderBookAggregationsFull(KaikoData):
                   'Data Feed delivery if you are trying to access data older than a month.')
 #### Needs to be changed ???
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('poll_timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -729,7 +912,7 @@ class OrderBookAaggregationsDepth(KaikoData):
                   'Data Feed delivery if you are trying to access data older than a month.')
 ### Needs to be changed ???
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('poll_timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -793,7 +976,7 @@ class OrderBookAggregationsSlippage(KaikoData):
                   'Data Feed delivery if you are trying to access data older than a month.')
 ### Needs to be changed ???
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('poll_timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -850,7 +1033,7 @@ class AggregatesOHLCV(KaikoData):
         self._request_api()
         print("api request done")
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -901,7 +1084,7 @@ class AggregatesVWAP(KaikoData):
         self._request_api()
 
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -956,7 +1139,7 @@ class AggregatesCOHLCV(KaikoData):
         self._request_api()
 
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -1012,12 +1195,12 @@ class PricingSpotDirectExchangeRate(KaikoData):
         self._request_api()
 ### needs to be adapted ? 
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         data_ = res['data']
         if len(data_) == 0:
             return pd.DataFrame()
         if 'sources' in data_[0].keys(): ## hacky solution for now
-            data_ = format_sources(data_)
+            data_ = format_sources_pricing(data_)
         df = pd.DataFrame(data_, dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -1101,7 +1284,7 @@ class PricingSpotExchangeRate(KaikoData):
         self._request_api()
 
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         data_ = res['data']
         if len(data_) == 0:
             return pd.DataFrame()
@@ -1181,7 +1364,7 @@ class PricingValuation(KaikoData):
         self._request_api()
 
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         data_ = res['data']
         if len(data_) == 0:
             return pd.DataFrame()
@@ -1226,7 +1409,7 @@ class DEXLiquidityEvents(KaikoData):
         self._request_api()
     ##needs to be adapted 
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -1261,7 +1444,7 @@ class DEXLiquiditySnapshots(KaikoData):
         self._request_api()
     ##needs to be adapted 
     @staticmethod
-    def df_formatter(res):
+    def df_formatter(res, **kwargs):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
