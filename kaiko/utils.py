@@ -75,7 +75,7 @@ def request_data(url: str, headers: dict = default_headers, params: dict = None,
     return res
 
 
-def request_df(url: str, return_query: bool = False, df_formatter=default_df_formatter, **kwargs):
+def request_df(url: str, return_query: bool = False, return_res: bool = False, df_formatter=default_df_formatter, **kwargs):
     """
     Make a simple request from the API.
 
@@ -89,18 +89,25 @@ def request_df(url: str, return_query: bool = False, df_formatter=default_df_for
     :return: DataFrame containing the data.
     """
     res = request_data(url, **kwargs)
+    print(f"res of query is {res}")
     try:
         df = df_formatter(res)
         if 'query' in res.keys():
             query = res['query']
         else:
             query = None
+        print("formatting succeeded")
     except Exception as e:
         query = (e, res)
         df = pd.DataFrame()
-
-    if return_query:
+        print("formatting failed")
+    print(f"return_query : {return_query}, return_res: {return_res} ")
+    if return_query and return_res:
+        return df, query, res
+    elif return_query and not(return_res):
         return df, query
+    elif not(return_query) and return_res:
+        return df, res
     else:
         return df
 

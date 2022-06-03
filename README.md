@@ -2,7 +2,15 @@
 A python wrapper to use Kaiko's data API.
 Please note that this repository is not officially maintained by Kaiko, contributions are welcome!
 
-## How to use 
+## Notes on this version 
+
+This is a work in progress it's a modification of Sacha Ghebali's implementation, quite a bit different.
+
+Aggregates and Order Book sub types could have been implemented each into one single class, documentation is not
+yet up to date and df_formatter are not yet implemented for many of the endpoints, some other functionalities have been added.
+It will get better moving forward, any input is welcome just send me an email (khaled@aave.com) or comment directly on github.
+
+Pull request on Sacha's github is coming as soon as this implementation is stable. 
 
 ### Importing the API to a project
 
@@ -20,7 +28,7 @@ candles for BTC/USD on LMAX from August 2020 and stores it into the attribute `d
 kc = kaiko.KaikoClient(api_key='<YOUR_API_KEY_HERE>')
 
 # Getting some simple daily candles
-ds = kaiko.Candles('lmax', 'btc-usd', start_time='2020-08', interval='1d', client=kc)
+ds = kaiko.AggregatesOHLCV('lmax', 'btc-usd', start_time='2020-08', interval='1d', client=kc)
 
 # Retrieve the dataframe containing the data
 ds.df
