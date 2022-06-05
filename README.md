@@ -4,10 +4,8 @@ Please note that this repository is not officially maintained by Kaiko, contribu
 
 ## Notes on this version 
 
-This is a work in progress it's a modification of Sacha Ghebali's implementation, quite a bit different.
+This is a work in progress, it's a modification of Sacha Ghebali's implementation 
 
-Aggregates and Order Book sub types could have been implemented each into one single class, documentation is not
-yet up to date and df_formatter are not yet implemented for many of the endpoints, some other functionalities have been added.
 It will get better moving forward, any input is welcome just send me an email (khaled@aave.com) or comment directly on github.
 
 Pull request on Sacha's github is coming as soon as this implementation is stable. 
@@ -20,6 +18,8 @@ import kaiko
 ```
 
 ### Example 1: Getting some candles (Count OHLCV VWAP)
+
+NEEDS TO BE ADAPTED !!!
 
 Create a data store from the class Candles.  The example below downloads all the daily 
 candles for BTC/USD on LMAX from August 2020 and stores it into the attribute `df`:

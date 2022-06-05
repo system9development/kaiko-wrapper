@@ -3,7 +3,7 @@
 #
 
 # Version number
-__version__ = "0.2"
+__version__ = "0.3"
 
-from kaiko.kaiko import KaikoData, KaikoClient, Trades, AggregatesCOHLCV, AggregatesOHLCV, AggregatesVWAP, OrderBookSnapshotsFull, Trades, OrderBookAaggregationsDepth, OrderBookAggregationsFull, OrderBookAggregationsSlippage, OrderBookSnapshotsFull, OrderBookSnapshotsDepth, OrderBookSnapshotsRaw, OrderBookSnapshotsSlippage, PricingSpotDirectExchangeRate, PricingSpotExchangeRate, PricingValuation, DEXLiquidityEvents, DEXLiquiditySnapshots
+from kaiko.kaiko import *
 import kaiko.utils as utils
