@@ -254,7 +254,7 @@ class KaikoData:
         return df
 
     def _request_api(self):
-        print("inside requestion api ")
+        print("inside requestion api ")## for debugging
         self.df, self.query_api, self.query_res = ut.request_df(self.url,
                                                 return_query = True,
                                                 return_res = True,
@@ -264,12 +264,17 @@ class KaikoData:
                                                 pagination = self.pagination,
                                                 extra_args = self.extra_args,
                                                 )
-        print("done:", self.df)
+        print("done:", self.df)## for debugging
 
     def load_catalogs(self):
         """ Loads catalogs in the client """
         self.client.load_catalogs()
 
+## notes: add pagination to parameters ??? 
+## notes: add live data ??
+
+
+############################################### Trade Data ###############################################
 
 class Trades(KaikoData):
     """
@@ -326,10 +331,14 @@ class Trades(KaikoData):
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
 
+############################################### Order Book Data ###############################################
+
+#notes : df_formatter probably needs to be adapted !
+
 class OrderBookSnapshots(KaikoData):
     """
     Full, Raw, Depth, Slippage Order Book Snapshots data.
-    
+
     type_of_ob is Full by default
     data_version is latest by default
     instrument_class is spot by default
@@ -509,6 +518,628 @@ class OrderBookSnapshots(KaikoData):
             df = add_price_levels(df)
         return df
 
+class OrderBookAggregations(KaikoData):
+    """
+    Full, Depth, Slippage Order Book Snapshots data.
+
+    type_of_ob is Full by default
+    data_version is latest by default
+    instrument_class is spot by default
+    page_size is 100 by default
+
+    ---------------------------------------------------------------------   Full   ---------------------------------------------------------------------
+    
+    Gives access to one month of historical 10% order book aggregated data. 
+    It returns metrics on the average depth of the order book (the cummulative volume of the base asset 
+    at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 4%, 6%, 8% and 10% from the mid price), 
+    the average spread, the average mid price and, when the slippage parameter is not empty, the average percentage 
+    of slippage for a given order size, either calculated from the best bid/ask or calculated from the mid price for 
+    a given interval. For each interval, the aggregates are calculated by taking the average metrics of each snapshot 
+    within that interval. For example, the aggregated 1 hour spread is calculated by taking all spreads of each snapshot 
+    within an hour and calculating the average. All data is returned in descending order.
+
+    Parameters:
+
+    Parameter	            Required	Description
+    continuation_token	    No	See Pagination.
+    data_version	        Yes	The data version. (v1, v2 ... or latest)
+    end_time	            No	Ending time in ISO 8601 (exclusive).
+    exchange	            Yes	Exchange code. See Exchanges Reference Data Endpoint.
+    instrument_class	    Yes	Instrument class. See Instruments Reference Data Endpoint.
+    instrument          	Yes	Instrument code. See Instruments Reference Data Endpoint.
+    interval	            No	Interval period. Default 1h.
+    page_size             	No	Number of snapshots to return data for. See Pagination (default: 10, max: 100).
+    sort	                No	Return the data in ascending (asc) or descending (desc) order. Default desc
+    start_time	            No	Starting time in ISO 8601 (inclusive).
+    slippage	            No	Order size (in quote asset) for which to calculate the percentage of slippage. Default: 0. When null is returned, not enough volume is present on the order book to execute the order.
+    slippage_ref	        No	Price point for which to calculate slippage from. Either from the mid price (mid_price) or from the best bid/ask (best). Default: mid_price.
+
+    Fields:
+
+    Field	            Description
+    poll_timestamp	    The timestamp at which the interval begins.
+    bid_volume_x	    The average volume of bids placed within 0 and x% of the midprice over a specified interval.
+    ask_volume_x	    The average volume of asks placed within 0 and x% of the midprice over a specified interval.
+    spread	            The average difference between the best bid and the best ask over a specified interval.
+    mid_price	        The average mid price between the best bid and the best ask over a specified interval
+    ask_slippage	    The average percentage of price slippage for a market buy order over a specified interval.
+    bid_slippage	    The average percentage of price slippage for a market sell order over a specified interval.
+
+    ---------------------------------------------------------------------   Depth   ---------------------------------------------------------------------
+    
+    Identical to Full but only returns metrics on average the depth of the order book (the cummulative 
+    volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 4%, 6%, 
+    8% and 10% from the mid price) per snapshot. For each interval, the aggregates are calculated by taking 
+    the average metrics of each snapshot within that interval. For example, the aggregated 1 hour spread is 
+    calculated by taking all spreads of each snapshot within an hour and calculating the average. The Full 
+    specific parameters (such as slippage, slippage_ref) are disabled but won't yield any errors when used. 
+    All data is returned in descending order.
+    
+    Parameters:
+
+    Parameter	                Required	Description
+    continuation_token      	No	        See Pagination.
+    data_version	            Yes	        The data version. (v1, v2 ... or latest)
+    end_time	                No	        Ending time in ISO 8601 (exclusive).
+    exchange	                Yes	        Exchange code. See Exchanges Reference Data Endpoint.
+    instrument_class	        Yes	        Instrument class. See Instruments Reference Data Endpoint.
+    instrument	                Yes	        Instrument code. See Instruments Reference Data Endpoint.
+    interval	                No	        Interval period. Default 1h.
+    page_size                   No	        Number of snapshots to return data for. See Pagination (default: 10, max: 100).
+    sort	                    No	        Return the data in ascending (asc) or descending (desc) order. Default desc
+    start_time	                No	        Starting time in ISO 8601 (inclusive).
+
+    Fields:
+
+    Field	        Description
+    poll_timestamp	The timestamp at which the interval begins
+    bid_volume_x	The average volume of bids placed within 0 and x% of the midprice over a specified interval.
+    ask_volume_x	The average volume of asks placed within 0 and x% of the midprice over a specified interval.
+
+    ---------------------------------------------------------------------   Slippage  ---------------------------------------------------------------------
+
+    Identical to Full but only returns the average slippage for a given order size, either calculated from the best 
+    bid/ask or calculated from the mid price. For each interval, the aggregates are calculated by taking the 
+    average metrics of each snapshot within that interval. For example, the aggregated 1 hour spread is calculated 
+    by taking all spreads of each snapshot within an hour and calculating the average. All data is returned in 
+    descending order.
+
+    Parameters:
+
+    Parameter	            Required	Description
+    continuation_token	    No	        See Pagination.
+    data_version	        Yes	        The data version. (v1, v2 ... or latest)
+    end_time	            No	        Ending time in ISO 8601 (exclusive).
+    exchange	            Yes	        Exchange code. See Exchanges Reference Data Endpoint.
+    instrument_class	    Yes	        Instrument class. See Instruments Reference Data Endpoint.
+    instrument	            Yes	        Instrument code. See Instruments Reference Data Endpoint.
+    interval	            No	        Interval period. Default 1h.
+    page_size	            No	        Number of snapshots to return data for. See Pagination (default: 10, max: 100).
+    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
+    start_time	            No	        Starting time in ISO 8601 (inclusive).
+    slippage	            No	        Order size (in quote asset) for which to calculate the percentage of slippage. Default: 0. When null is returned, not enough volume is present on the order book to execute the order.
+    slippage_ref	        No	        Price point for which to calculate slippage from. Either from the mid price (mid_price) or from the best bid/ask (best). Default: mid_price.
+
+    Fields:
+
+    Field	        Description
+    poll_timestamp	The timestamp at which the interval begins.
+    ask_slippage	The average percentage of price slippage for a market buy order over a specified interval.
+    bid_slippage	The average percentage of price slippage for a market sell order over a specified interval.
+    """
+    def __init__(self, exchange: str, instrument: str, type_of_ob: str = 'Full', instrument_class: str = 'spot', params: dict = dict(page_size=100),
+                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
+
+        # Initialize endpoint required parameters
+        assert type_of_ob in ['Full', 'Depth', 'Slippage'], "type_of_ob needs to be either Full, Depth or Slippage"
+
+        self.req_params = dict(commodity='order_book_snapshots',
+                               data_version=data_version,
+                               exchange=exchange,
+                               instrument_class=instrument_class,
+                               instrument=instrument,
+                               )
+        if type_of_ob == 'Full':
+            self.parameter_space = 'continuation_token,end_time,interval,page_size,sort,start_time,slippage,slippage_ref'.split(',')
+        else:
+            self.parameter_space = 'continuation_token,end_time,interval,page_size,sort,start_time'.split(',')
+    
+        endpoints = {'Full': _URL_ORDER_BOOK_AGGREGATIONS_FULL, 'Depth': _URL_ORDER_BOOK_AGGREGATIONS_DEPTH, 'Slippage': _URL_ORDER_BOOK_AGGREGATIONS_SLIPPAGE}
+        endpoint = endpoints[type_of_ob]
+
+        self.extra_args = {'type_of_ob': type_of_ob}
+
+        KaikoData.__init__(self, endpoint, self.req_params, params, client, extra_args = self.extra_args, **kwargs)
+        self._request_api()
+
+        if len(self.df) == 0:
+            print(f'No data was found for the time range selected. \n{self.query_api}')
+            print('NB: only one month of historical order book snapshots is available from the API. Please setup a '
+                  'Data Feed delivery if you are trying to access data older than a month.')
+
+    @staticmethod
+    def df_formatter(res, **kwargs):
+        df = pd.DataFrame(res['data'], dtype='float')
+        df.set_index('poll_timestamp', inplace=True)
+        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
+        if kwargs['type_of_ob'] in ['Full', 'Depth']:
+            df = add_price_levels(df)
+        return df
+
+def add_price_levels(df):
+    """
+    Raw order book snapshots data
+    Add order-book price levels corresponding to amounts given by the API:
+     X_volume_Y where X is in {bid, ask} and Y is the price level relative to the midprice:
+     0_1 ... 0_9 : 0.1% to 0.9% away from the mid price
+     1 ... 10 : 1% to 10% away from the mid price
+    """
+    for side in ['bid', 'ask']:
+        labs = [l for l in df.columns if l.startswith('%s_volume' % side)]
+        for lab in labs:
+            # calculate the level
+            lvl_lab = lab.split('volume')[-1]
+            lvl = float('.'.join(lvl_lab.split('_'))) / 100
+            # side of the order book
+            eps = -1 * (side == 'bid') + 1 * (side == 'ask')
+
+            newlab = '%s_price%s' % (side, lvl_lab)
+
+            df[newlab] = df["mid_price"] * (1 + eps * lvl)
+    return df
+
+############################################### Aggregates Data ###############################################
+
+#notes: df_formatter probably needs to be adapted !
+
+class Aggregates(KaikoData):
+    """
+    OHLCV, VWAP or COHLCV
+
+    data_version is latest by default
+    instrument_class is spot by default
+    type_of_aggregate is OHLCV by default
+
+    ---------------------------------------------------------------------   OHLCV   ---------------------------------------------------------------------
+
+    Retrieves the OHLCV history for an instrument on an exchange. 
+    The interval parameter is suffixed with s, m, h or d to specify seconds, minutes, hours or days, 
+    respectively. By making use of the sort parameter, data can be returned in ascending asc or descending desc order.
+
+    Parameters:
+
+    Parameter	            Required	Description
+    continuation_token  	No	        See Pagination.
+    data_version	        Yes	        The data version. (v1, v2 ... or latest)
+    end_time	            No	        Ending time in ISO 8601 (exclusive).
+    exchange	            Yes	        Exchange code.
+    instrument_class	    Yes	        Instrument class. See Instruments Reference Data Endpoint.
+    instrument	            Yes	        Instrument code. See Instruments Reference Data Endpoint.
+    interval	            No	        Interval period. Default 1d.
+    page_size	            No	        See Pagination (min: 1, default: 100000, max: 100000).
+    start_time	            No	        Starting time in ISO 8601 (inclusive).
+    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
+
+    Fields:
+
+    Field	    Description
+    timestamp	Timestamp at which the interval begins.
+    open	    Opening price of interval. null when no trades reported.
+    high	    Highest price during interval. null when no trades reported.
+    low	        Lowest price during interval. null when no trades reported.
+    close	    Closing price of interval. null when no trades reported.
+    volume	    Volume traded in interval. 0 when no trades reported.
+
+    ---------------------------------------------------------------------   VWAP   ---------------------------------------------------------------------
+
+    Retrieves aggregated VWAP (volume-weighted average price) history for an instrument on an exchange. The interval 
+    parameter is suffixed with s, m, h or d to specify seconds, minutes, hours or days, respectively. By making use 
+    of the sort parameter, data can be returned in ascending asc or descending desc (default) order.
+
+    Parameters:
+
+    Parameter	            Required	Description
+    continuation_token  	No	        See Pagination.
+    data_version	        Yes	        The data version. (v1, v2 ... or latest)
+    end_time	            No	        Ending time in ISO 8601 (exclusive).
+    exchange	            Yes	        Exchange code. See Instruments Reference Data Endpoint.
+    instrument_class	    Yes	        Instrument class. See Instruments Reference Data Endpoint.
+    instrument	            Yes	        Instrument code. See Instruments Reference Data Endpoint.
+    interval	            No	        Interval period. Default 1d.
+    page_size	            No	        See Pagination (min: 1, default: 100000, max: 100000).
+    start_time	            No	        Starting time in ISO 8601 (inclusive).
+    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
+
+    Fields: 
+
+    Field	Description
+    timestamp	Timestamp at which the interval begins.
+    price	Volume-weighted average price. null when no trades reported.
+
+    ---------------------------------------------------------------------   COHLCV   ---------------------------------------------------------------------
+        
+    Retrieves the trade count, OHLCV and VWAP history for an instrument on an exchange. The interval parameter is 
+    suffixed with s, m, h or d to specify seconds, minutes, hours or days, respectively. By making use of the sort parameter, 
+    data can be returned in ascending asc (default) or descending desc order.
+
+    Parameters:
+
+    Parameter	            Required	Description
+
+    continuation_token  	No	        See Pagination.
+    data_version	        Yes	        The data version. (v1, v2 ... or latest)
+    end_time	            No	        Ending time in ISO 8601 (exclusive).
+    exchange	            Yes	        Exchange code.See Instruments Reference Data Endpoint.
+    instrument_class	    Yes	        Instrument class. See Instruments Reference Data Endpoint.
+    instrument          	Yes	        Instrument code. See Instruments Reference Data Endpoint.
+    interval	            No	        Interval period. Default 1d.
+    page_size	            No	        See Pagination (min: 1, default: 100000, max: 100000).
+    start_time	            No	        Starting time in ISO 8601 (inclusive).
+    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
+
+    Fields:
+    
+    Field	    Description
+    timestamp	Timestamp at which the interval begins.
+    count	    Then number of trades. 0 when no trades reported.
+    open	    Opening price of interval. null when no trades reported.
+    high	    Highest price during interval. null when no trades reported.
+    low	        Lowest price during interval. null when no trades reported.
+    close	    Closing price of interval. null when no trades reported.
+    volume	    Volume traded in interval. 0 when no trades reported.
+    """
+    def __init__(self, exchange: str, instrument: str, type_of_aggregate: str = 'OHLCV', instrument_class: str = 'spot', params: dict = dict(page_size=100000), 
+                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
+
+        # Initialize endpoint required parameters
+        assert type_of_aggregate in ['OHLCV', 'COHLCV', 'VWAP'], "type_of_aggregate needs to be either OHLCV, COHLCV or VWAP"
+        self.req_params = dict(commodity='trades',
+                               data_version=data_version,
+                               exchange=exchange,
+                               instrument_class=instrument_class,
+                               instrument=instrument,
+                               )
+
+        self.parameter_space = 'continuation_token,end_time,interval,page_size,start_time,sort'.split(',')
+        endpoints = {'OHLCV': _URL_AGGREGATES_OHLCV, 'COHLCV': _URL_AGGREGATES_COHLCV, 'VWAP': _URL_AGGREGATES_VWAP}
+        endpoint = endpoints[type_of_aggregate]
+        print("endpoint is done")
+
+        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
+        self._request_api()
+    @staticmethod
+    def df_formatter(res, **kwargs):
+        df = pd.DataFrame(res['data'], dtype='float')
+        df.set_index('timestamp', inplace=True)
+        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
+        return df
+
+############################################### Asset Pricing ###############################################
+
+#notes: df_formatter probably needs to be adapted !
+
+class AssetPricing(KaikoData):
+    """
+    SpotDirectExchangeRate, SpotExchangeRate
+
+    ---------------------------------------------------------------------   SpotDirectExchangeRate   ---------------------------------------------------------------------
+
+    generates an aggregated price for an asset pair across all exchanges with spot markets for the pair. Only asset combinations which are actively being traded 
+    on one of our covered exchanges are being taken into account for the calculation of the price. Unsupported asset combinations will return no data. To return 
+    data used as input for the calculation of the aggregated price, set the sources parameter to true. Setting the sources parameter to false (default) will yield 
+    a faster response time. By making use of the sort parameter, data can be returned in ascending asc or descending desc order (default).
+
+    Parameters:
+
+    Parameter	            Required	Description
+    base_asset	            Yes	        The desired base asset code. See Instruments Reference Data Endpoint.
+    data_version	        Yes	        The data version. (v1, v2 ... or latest)
+    end_time	            No	        Ending time in ISO 8601 (exclusive).
+    exclude_exchanges	    No	        List of exchanges' code to exclude from the calculation. See Instruments Reference Data Endpoint. Only available in API v2.
+    interval	            No	        Interval period. Default 1d.
+    include_exchanges	    No	        List of exchanges' code to include in the calculation. See Instruments Reference Data Endpoint. Only available in API v2.
+    page_size             	No	        See Pagination (min: 1, default: 100, max: 1000).
+    quote_asset	            Yes	        The desired quote asset code. See Instruments Reference Data Endpoint.
+    start_time	            No	        Starting time in ISO 8601 (inclusive).
+    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default is asc in API v1, desc in API v2.
+    sources 	            No	        boolean. If true, returns all prices which were used to calculate aggregated price. Default is false
+    
+    Fields:
+
+    Field	    Description
+    timestamp	Timestamp at which the interval begins.
+    price	    Aggregated VWAP. null when no trades reported.
+    volume	    Total volume traded in interval. 0 when no trades reported.
+    count	    Total amount of trades reported during interval. 0 when no trades reported.
+
+    ---------------------------------------------------------------------   SpotExchangeRate   ---------------------------------------------------------------------
+
+### add assert V2 for data_version
+    Returns the price of any asset quoted in a Fiat currency within Open Exchange Rate. The USD price is calculated based on the path of the highest liquidity, 
+    with an additional step using forex rates to get the final fiat price. This means that, even though an asset might trade directly against all Open Exchange 
+    Rate currencies, the price might still be established by using cross-rates1. In cases where the most liquid path changed over time, this will be taken into 
+    account in the calculation of the price for each interval. To have an overview of what data was used to calculate the price, set the sources parameter to 
+    true. Setting the sourcesparameter to false (default) will yield a faster response time. By making use of the sort parameter, data can be returned in 
+    ascending asc (default) or descending desc order.
+    
+    Parameters:
+
+    Parameter	            Required	Description
+    base_asset	            Yes	        The desired base asset code. See Instruments Reference Data Endpoint.
+    data_version	        Yes	        The data version. (v1, v2 ... or latest)
+    end_time            	No	        Ending time in ISO 8601 (exclusive).
+    exclude_exchanges   	No	        List of exchanges' code to exclude from the calculation. See Instruments Reference Data Endpoint. Only available in API v2.
+    interval            	No	        Interval period. Default 1d.
+    include_exchanges   	No	        List of exchanges' code to include in the calculation. See Instruments Reference Data Endpoint. Only available in API v2.
+    outliers_strategy	    No	        Either median_perc, modified_zscore or zscore. See the Outlier Management section below.
+    outliers_min_data	    No	        Number of minimum data points needed to trigger the outlier detecton. Default to 4.
+    outliers_threshold	    No	        Threshold to use. Usage depends on the chosen outlier management strategy.
+    page_size           	No	        See Pagination (min: 1, default: 100, max: 1000).
+    quote_asset         	Yes	        The desired quote asset code. See Instruments Reference Data Endpoint.
+    start_time          	No	        Starting time in ISO 8601 (inclusive).
+    sort                	No	        Return the data in ascending (asc) or descending (desc) order. Default is asc
+    sources             	No	        boolean. If true, returns all prices which were used to calculate aggregated price. Default is false
+
+    Fields:
+
+    Field	    Description
+    timestamp	Timestamp at which the interval begins.
+    price	    Aggregated VWAP. null when no trades reported.
+    volume	    Total volume traded in interval. 0 when no trades reported.
+    count	    Total amount of trades reported during interval. 0 when no trades reported.
+
+    Outlier management:
+
+    median_perc	        Computes the median of all prices and excludes values that are off a certain % from the median. This is the simplest 
+                        and most intuitive strategy. As it makes use of the median, it's better suited against extreme outliers. 
+                        Usage of outliers_threshold: 0.1 for 10%
+    zscore	            Computes the Z-score of each data point and excludes the ones for which zscore > outliers_threshold, 
+                        where outliers_threshold is specified by the user (i.e a good rules of thumb would be a value between 1.5 and 3.5). 
+                        Z-score signals how many standard deviations away a given observation is from the mean. This strategy is more susceptible 
+                        to extreme values, as it makes use of the mean. See kaiko docs
+    modified_zscore	    Similar to zscore but using the median instead of the mean, and the MAD (median absolute deviation) instead of standard 
+                        deviation. This makes it less susceptible to extreme values. Usage of outliers_threshold: generally between 2 and 4
+
+    """
+
+    def __init__(self, base_asset: str, quote_asset: str, type_of_pricing: str = 'SpotDirectExchangeRate', params: dict = dict(page_size=1000), data_version: str = 'latest', client: KaikoClient = None, **kwargs):
+
+        # Initialize endpoint required parameters
+        assert type_of_pricing in ['SpotDirectExchangeRate', 'SpotExchangeRate'], "type_of_pricing needs to be either AssetPrice, CrossPrice or Valuation"
+        self.req_params = dict(data_version=data_version,
+                                base_asset=base_asset,
+                                quote_asset=quote_asset,
+                               )
+        if type_of_pricing == 'SpotDirectExchangeRate':
+            self.parameter_space = 'end_time,exclude_exchanges,interval,include_exchanges,page_size,start_time,sort,sources'.split(',')
+        else:
+            self.parameter_space = 'end_time,exclude_exchanges,interval,include_exchanges,outliers_strategy,outliers_min_data,outliers_threshold,page_size,start_time,sort,sources'.split(',')
+        endpoints = {'SpotDirectExchangeRate': _URL_PRICING_SPOT_DIRECT_EXCHANGE_RATE, 'SpotExchangeRate': _URL_PRICING_SPOT_EXCHANGE_RATE}
+        endpoint = endpoints[type_of_pricing]
+
+        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
+
+        self._request_api()
+
+    @staticmethod
+    def df_formatter(res, **kwargs):
+        data_ = res['data']
+        if len(data_) == 0:
+            return pd.DataFrame()
+        if 'sources' in data_[0].keys(): ## hacky solution for now
+            data_ = format_sources_pricing(data_)
+        df = pd.DataFrame(data_, dtype='float')
+        df.set_index('timestamp', inplace=True)
+        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
+        return df
+
+def format_sources_pricing(data_):
+    data_points = []
+    for data_point in data_:
+        sources = data_point['sources']
+        base_for_df = []
+        for pair in sources.keys():
+            for k in range(len(sources[pair]['data'])):
+                exchange_rate = sources[pair]['data'][k] 
+                exchange_rate['pair'] = pair
+                base_for_df.append(exchange_rate)
+            final_price = sources[pair]['price']
+            base_for_df.append({"pair": pair, "exchange_code": "", "count": 0., "price": final_price, "volume": 0.})
+        data_points.append(pd.DataFrame(base_for_df))
+    for k in range(len(data_)):
+        data_[k]['sources'] = data_points[k]
+    return data_
+
+class Valuation(KaikoData):
+    """
+    Allows you to build completely customizable single-asset or multi-asset price feeds for NAV calculations, portfolio valuation, asset allocation strategies, and indices.
+
+    Parameters:
+
+    Parameter	            Required	Description
+    bases	                Yes	        List of base components. Min. 1, max. 5
+    continuation_token	    No	        See Pagination.
+    data_version        	Yes	        The data version. (v1, v2 ... or latest)
+    end_time            	No	        Last fixing of the calculation in ISO 8601 (exclusive).
+    exchanges           	No	        List of exchanges to source data from. See Instruments Reference Data Endpoint. Default: all exchanges
+    interval            	No	        Frequency in time unit after the first fixing. Default: 1d.
+    percentages         	Yes	        List of percentages for outlier management. To not enforce any outlier management, use 1
+    start_time          	No	        First fixing of the calculation in ISO 8601 (inclusive).
+    semi_length_window  	Yes	        The time interval to compute the transaction.
+    sources             	No	        boolean. If true, returns all prices and volumes which were used to calculate valuation price. Default: false
+    quote	                Yes	        The fiat pricing currency.
+    weights	                Yes	        Weighting list of base assets. For single-asset price feeds use an asset weighting of “1”
+
+    Fields:
+
+    Field	        Description
+    timestamp	    Timestamp at which the interval begins.
+    percentage	    Percent of the price distribution centered around the median price.
+    price	        The composite price, with a base of 100.
+    pair	        The constituent pair.
+    contribution	The asset contribution to the composite price.
+    ref_price	    The reference price per asset.
+    weight	        The weight per asset.
+
+    Computation and Constraints:
+    Considering the volume of data points processed for the computation of each data point, some parameter constraints have been implemented in order to optimize computation time:
+    The number of bases must be less or equal to 5
+    The number of percentages must be less or equal to 5
+    weights and bases must have the same length
+    The order of bases and their respective weighting must match
+    weights must sum up to 1
+    Each response will only contain maximum 7 days of data. To get more data, the continuation_token should be used.
+    The interval must be greater than twice the semi_length_window
+    """
+    
+    def __init__(self, bases: list[str], semi_length_window: str, percentages: list[str], quote: str, weights: list[str], params: dict = dict(page_size=100000), data_version: str = 'latest', client: KaikoClient = None, **kwargs):
+        assert len(bases) >= 1 and len(bases) <= 5, "Bases needs to have at least one element and maximum 5"
+        assert len(percentages) <= 5, "Number of percentages must be les or equal to 5"
+        assert len(bases) == len(weights), "Bases and length are not of the same weight"
+        # Initialize endpoint required parameters
+        self.req_params = dict(data_version=data_version,
+                                bases=bases,
+                                semi_length_window=semi_length_window,
+                                percentages=percentages,
+                                quote=quote,
+                                weights=weights,
+                               )
+
+        self.parameter_space = 'continuation_token,end_time,exchanges,interval,start_time,sources'.split(',')
+        endpoint = _URL_PRICING_VALUATION
+
+        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
+
+        self._request_api()
+### format_sources_valuation needs to be adapted. 
+    @staticmethod
+    def df_formatter(res, **kwargs):
+        data_ = res['data']
+        if len(data_) == 0:
+            return pd.DataFrame()
+        if 'sources' in data_[0].keys(): ## hacky solution for now
+            data_ = format_sources_valuation(data_)
+        
+        df = pd.DataFrame(res['data'], dtype='float')
+        df.set_index('timestamp', inplace=True)
+        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
+        return df
+
+def format_sources_valuation(data_):
+    return data_
+
+############################################### DEX Liquidity Data ###############################################
+
+#notes: df_formatter probably needs to be adapted !
+
+class DEXLiquidityEvents(KaikoData):
+    """
+    Provides flows data about the mint & the burn (adds & removals) type transactions associated to tokens amounts 
+    registered on DEXs liquidity pools. This data is made available at a transactional level and at a block granularity.
+
+    Those data are made available historically and live, and all at a block-by-block granularity. The supported exchanges are Uniswap, Sushiswap, Balancer, and Curve.
+    
+    ---------------------------------------------------------------------   Events   ---------------------------------------------------------------------
+
+    Parameters:
+
+    Parameter	        Required	Description	Example
+    exchange	        No	        Should be one of the currently supported DEX	usp2
+    pool	            No	        Pool address related to the liquidity event. Default: all liquidity pools.	0x14de8287adc90f0f95bf567c0707670de52e3813
+    pool_contains	    No	        Liquidity events including the requested token. Default: all available tokens.	weth or weth,usdt,usdc
+    block	            No	        Block height.	129876
+    start_time	        No	        Starting time in ISO 8601 (inclusive)	2022-04-01T00:00:00.000Z
+    end_time	        No	        Ending time in ISO 8601 (inclusive)	2022-05-01T00:00:00.000Z
+    sort	            No	        Returns the data in ascending (asc) or descending (desc) order. Default: desc.	asc
+    type	            No	        Event type. By default both burn and mint are shown.	burn or mint
+
+    Fields:
+
+    Field	            Description	                                                    Example
+    block_number	    The height of the block in which the transaction happened.	    129876
+    type	            Event type: mint or burn.	                                    burn or mint
+    pool_name	        Name of the pool as it is written on the blockchain.	        USDC-WETH-0.001
+    pool_address	    Address of the contract of the pool.	                        0x88e6a0c2ddd26feeb64f039a2c41296fcb3f5640
+    exchange	        Code of the DEX.	                                            usp3
+    transaction_hash	Transaction hash	                                            0x3d28ec9f35692ee6e9264735cd4f92c48bccda82487144d26ebc12376a418cdc
+    price	            Price of the token at the moment of the event.	                0.000358096
+    amounts	            Amounts of the tokens	                                        See example
+    datetime	        Timestamp at which the interval begins. In milliseconds.	    1650441900000
+    metadata	        Only for Uniswap v3. Upper and lower ticker of the interval     {"lower_ticker": 190650, "upper_ticker": 195610}
+                        on which the liquidity is provided	
+    """
+    def __init__(self, params: dict = dict(), client=None, **kwargs):
+
+        # Initialize endpoint required parameters
+        self.req_params = dict()
+
+        self.parameter_space = 'exchange,pool,pool_contains,block,start_time,end_time,sort,type'.split(',')
+        endpoint = _URL_DEX_LIQUIDITY_EVENTS
+
+        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
+
+        self._request_api()
+
+##needs to be adapted 
+    @staticmethod
+    def df_formatter(res, **kwargs):
+        df = pd.DataFrame(res['data'], dtype='float')
+        df.set_index('timestamp', inplace=True)
+        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
+        return df
+
+class DEXLiquiditySnapshots(KaikoData):
+    """
+    Provides the total amount of reserves per token, made available at a liquidity pool level for all the covered 
+    DEXs. Specifically for Uniswap V3, this data is also made available in a per tick level, and enables the users to visualise the distribution of 
+    liquidity across ticks, for every block and liquidity pool available on Uniswap V3.
+
+    Those data are made available historically and live by both endpoints, and all at a block-by-block granularity. The supported exchanges are Uniswap, Sushiswap, Balancer, and Curve.
+   
+    ---------------------------------------------------------------------   Snapshots   ---------------------------------------------------------------------
+
+    Parameters:
+
+    Parameter	    Required	Description	Example
+    pool_address	Yes	        Pool address related to the liquidity event.	0x14de8287adc90f0f95bf567c0707670de52e3813
+    start_block	    No	        Starting block height.	129876
+    end_block	    No	        Ending block height.	129886
+    start_time	    No	        Starting time in ISO 8601 (inclusive).	2022-04-01T00:00:00.000Z
+    end_time	    No	        Ending time in ISO 8601 (inclusive).	2022-05-01T00:00:00.000Z
+    sort	        No	        Returns the data in ascending (asc) or descending (desc) order. Default: desc.	asc
+    
+    Fields:
+
+    Field	        Description	                                            Example
+    block_number	The height of the block.	                            129876
+    pool_name	    Name of the pool as it is written on the blockchain.	3pool
+    pool_address	Address of the contract of the pool.	                0xbebc44782c7db0a1a60cb6fe97d0b483032ff1c7
+    exchange	    Code of the DEX.	                                    curv
+    amounts	        Snapshot of the liquidity pool's tokens.	            See example
+    datetime	    Timestamp at which the interval begins.                 In milliseconds.	1650441900000
+
+    """
+    def __init__(self, pool_address, params: dict = dict(), client=None, **kwargs):
+
+        # Initialize endpoint required parameters
+        self.req_params = dict(pool_address=pool_address)
+
+        self.parameter_space = 'start_block,end_block,start_time,end_time,sort'.split(',')
+        endpoint = _URL_DEX_LIQUIDITY_EVENTS
+
+        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
+
+        self._request_api()
+    ##needs to be adapted 
+    @staticmethod
+    def df_formatter(res, **kwargs):
+        df = pd.DataFrame(res['data'], dtype='float')
+        df.set_index('timestamp', inplace=True)
+        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
+        return df
+
+############################################### Previous implementations ###############################################
+
 class OrderBookSnapshotsFull(KaikoData):
     """
     Full Order-book snapshots data
@@ -582,31 +1213,6 @@ class OrderBookSnapshotsFull(KaikoData):
         df = add_price_levels(df)
         return df
 
-def add_price_levels(df):
-    """
-    Raw order book snapshots data
-
-
-    Add order-book price levels corresponding to amounts given by the API:
-     X_volume_Y where X is in {bid, ask} and Y is the price level relative to the midprice:
-     0_1 ... 0_9 : 0.1% to 0.9% away from the mid price
-     1 ... 10 : 1% to 10% away from the mid price
-    """
-    for side in ['bid', 'ask']:
-        labs = [l for l in df.columns if l.startswith('%s_volume' % side)]
-        for lab in labs:
-            # calculate the level
-            lvl_lab = lab.split('volume')[-1]
-            lvl = float('.'.join(lvl_lab.split('_'))) / 100
-            # side of the order book
-            eps = -1 * (side == 'bid') + 1 * (side == 'ask')
-
-            newlab = '%s_price%s' % (side, lvl_lab)
-
-            df[newlab] = df["mid_price"] * (1 + eps * lvl)
-    return df
-
-
 class OrderBookSnapshotsRaw(KaikoData):
     """
     Identical to Full but only returns the raw snapshots of bids and asks without 
@@ -642,7 +1248,7 @@ class OrderBookSnapshotsRaw(KaikoData):
                 data_version: str = 'latest', client: KaikoClient = None, **kwargs):
 
         # Initialize endpoint required parameters
-        self.parameter_space = 'continuation_token, end_time, limit_orders, page_size, sort, start_time, slippage, slippage_ref'.split(',')
+        self.parameter_space = 'continuation_token,end_time,limit_orders,page_size,sort,start_time,slippage,slippage_ref'.split(',')
         self.req_params = dict(commodity='order_book_snapshots',
                                data_version=data_version,
                                exchange=exchange,
@@ -788,9 +1394,6 @@ class OrderBookSnapshotsSlippage(KaikoData):
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
 
-
-
-#### FORMATTER NEEDS TO BE ADAPTED ! 
 
 class OrderBookAggregationsFull(KaikoData):
     """
@@ -980,8 +1583,8 @@ class OrderBookAggregationsSlippage(KaikoData):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('poll_timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        df = add_price_levels(df)
         return df
+
 
 class AggregatesOHLCV(KaikoData):
     """
@@ -1109,6 +1712,8 @@ class AggregatesCOHLCV(KaikoData):
     start_time	            No	Starting time in ISO 8601 (inclusive).
     sort	                No	Return the data in ascending (asc) or descending (desc) order. Default desc
 
+    Fields:
+
     Field	    Description
     timestamp	Timestamp at which the interval begins.
     count	    Then number of trades. 0 when no trades reported.
@@ -1146,7 +1751,6 @@ class AggregatesCOHLCV(KaikoData):
         return df
 
 
-## base assset, data_version, quote_asset
 class PricingSpotDirectExchangeRate(KaikoData):
     """
     Generates an aggregated price for an asset pair across all exchanges with spot markets for the 
@@ -1205,28 +1809,6 @@ class PricingSpotDirectExchangeRate(KaikoData):
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
-
-def format_sources_pricing(data_):
-    data_points = []
-    for data_point in data_:
-        sources = data_point['sources']
-        base_for_df = []
-        for pair in sources.keys():
-            for k in range(len(sources[pair]['data'])):
-                exchange_rate = sources[pair]['data'][k] 
-                exchange_rate['pair'] = pair
-                base_for_df.append(exchange_rate)
-            final_price = sources[pair]['price']
-            base_for_df.append({"pair": pair, "exchange_code": "", "count": 0., "price": final_price, "volume": 0.})
-        data_points.append(pd.DataFrame(base_for_df))
-    for k in range(len(data_)):
-        data_[k]['sources'] = data_points[k]
-    return data_
-
-
-## outliers_strategy
-## outliers_min_data
-## outliers_threshold
 
 class PricingSpotExchangeRate(KaikoData):
     """
@@ -1294,7 +1876,6 @@ class PricingSpotExchangeRate(KaikoData):
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
-
 
 class PricingValuation(KaikoData):
     """
@@ -1375,84 +1956,6 @@ class PricingValuation(KaikoData):
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
-
-### needs to be adapted 
-def format_sources_valuation(data_):
-    return data_
-
-
-class DEXLiquidityEvents(KaikoData):
-    """
-    Liquidity events provides flows data about the mint & the burn (adds & removals) type transactions associated to 
-    tokens amounts registered on DEXs liquidity pools. This data is made available at a transactional level and at a block granularity.
-
-    Parameter	        Required	Description	                                                                        Example
-    exchange	        No	        Should be one of the currently supported DEX	                                    usp2
-    pool	            No	        Pool address related to the liquidity event. Default: all liquidity pools.	        0x14de8287adc90f0f95bf567c0707670de52e3813
-    pool_contains	    No      	Liquidity events including the requested token. Default: all available tokens.	    weth or weth,usdt,usdc
-    block	            No	        Block height.	                                                                    129876
-    start_time	        No	        Starting time in ISO 8601 (inclusive)	                                            2022-04-01T00:00:00.000Z
-    end_time	        No	        Ending time in ISO 8601 (inclusive)	                                                2022-05-01T00:00:00.000Z
-    sort	            No	        Returns the data in ascending (asc) or descending (desc) order. Default: desc.	    asc
-    type	            No	        Event type. By default both burn and mint are shown.	                            burn or mint
-    """
-    def __init__(self, params: dict = dict(page_size=100000), data_version='latest', client=None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.req_params = dict(data_version=data_version)
-
-        self.parameter_space = 'exchange,pool,pool_contains,block,start_time,end_time,sort,type'.split(',')
-        endpoint = _URL_DEX_LIQUIDITY_EVENTS
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-
-        self._request_api()
-    ##needs to be adapted 
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        return df
-
-class DEXLiquiditySnapshots(KaikoData):
-    """
-    The liquidity snapshots endpoint provides the total amount of reserves per token, made available at 
-    a liquidity pool level for all the covered DEXs. Specifically for Uniswap V3, this data is also made 
-    available in a per tick level, and enables the users to visualise the distribution of liquidity across ticks, 
-    for every block and liquidity pool available on Uniswap V3.
-
-    Parameter	    Required	Description	                                                                    Example
-    pool_address	Yes	        Pool address related to the liquidity event.	                                0x14de8287adc90f0f95bf567c0707670de52e3813
-    start_block	    No	        Starting block height.	                                                        129876
-    end_block	    No	        Ending block height.	                                                        129886
-    start_time	    No	        Starting time in ISO 8601 (inclusive).	                                        2022-04-01T00:00:00.000Z
-    end_time	    No	        Ending time in ISO 8601 (inclusive).	                                        2022-05-01T00:00:00.000Z
-    sort	        No	        Returns the data in ascending (asc) or descending (desc) order. Default: desc.	asc    
-    """
-    def __init__(self, pool_address, params: dict = dict(page_size=100000), data_version='latest', client=None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.req_params = dict(data_version=data_version,
-                                pool_address=pool_address)
-
-        self.parameter_space = 'start_block,end_block,start_time,end_time,sort'.split(',')
-        endpoint = _URL_DEX_LIQUIDITY_EVENTS
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-
-        self._request_api()
-    ##needs to be adapted 
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        return df
-
-
-
-### needs to be changed 
 
 
 
