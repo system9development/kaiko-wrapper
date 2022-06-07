@@ -61,8 +61,8 @@ _URL_PRICING_VALUATION = 'v2/data/trades.{data_version}/valuation'
 
 #### DEX liquidity data ####
 
-_URL_DEX_LIQUIDITY_EVENTS = 'v2/data/liquidity.{data_version}/events'
-_URL_DEX_LIQUIDITY_SNAPSHOTS = 'v2/data/liquidity.{data_version}/snapshots'
+_URL_DEX_LIQUIDITY_EVENTS = 'v2/data/liquidity.v1/events'
+_URL_DEX_LIQUIDITY_SNAPSHOTS = 'v2/data/liquidity.v1/snapshots'
 
 #### Risk management data ####
 
@@ -247,38 +247,38 @@ class KaikoData:
                 self.req_params[key] = kwargs[key]
 
     @staticmethod
-    def df_formatter(res, **kwargs):
+    def df_formatter(res, extra_args: dict = {}):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
 
     def _request_api(self):
-        print("inside requestion api ")## for debugging
+        print("kaiko.py: _request_api inside start")## for debugging
         self.df, self.query_api, self.query_res = ut.request_df(self.url,
                                                 return_query = True,
                                                 return_res = True,
                                                 headers = self.client.headers,
                                                 params = self.params,
                                                 df_formatter = self.df_formatter,
-                                                pagination = self.pagination,
                                                 extra_args = self.extra_args,
+                                                pagination = self.pagination
                                                 )
-        print("done:", self.df)## for debugging
+        print("kaiko.py: _request_api done")
 
     def load_catalogs(self):
         """ Loads catalogs in the client """
         self.client.load_catalogs()
 
-## notes: add pagination to parameters ??? 
-## notes: add live data ??
+## notes: add pagination to parameters ??? no 
+## notes: add live data ?? ~maybe
 
 
 ############################################### Trade Data ###############################################
 
 class Trades(KaikoData):
     """
-    This endpoint retrieves trades for an instrument on a specific exchange. Trades are sorted 
+    Retrieves trades for an instrument on a specific exchange. Trades are sorted 
     by time; ascendingly in v1, descendingly in v2. Note that taker_side_sell can be null in the 
     cases where this information was not available at collection.
 
@@ -288,13 +288,11 @@ class Trades(KaikoData):
     Parameters:
 
     Parameter	            Required	Description
-    continuation_token	    No	        See Pagination(https://docs.kaiko.com/#pagination).
     data_version	        Yes	        The data version. (v1, v2 ... or latest)
     end_time	            No	        Ending time in ISO 8601 (exclusive).
     exchange	            Yes	        Exchange code. See Exchanges Reference Data Endpoint.
     instrument_class	    Yes	        Instrument class. See Instruments Reference Data Endpoint.
     instrument	            Yes	        Instrument code. See Instruments Reference Data Endpoint.
-    page_size	            No	        See Pagination (min: 1, max: 100000, default is 100000).
     start_time	            No	        Starting time in ISO 8601 (inclusive).
 
     Fields:
@@ -325,7 +323,7 @@ class Trades(KaikoData):
         self._request_api()
 
     @staticmethod
-    def df_formatter(res, **kwargs):
+    def df_formatter(res, extra_args: dict = {}):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -357,14 +355,12 @@ class OrderBookSnapshots(KaikoData):
     Parameters :
 
     Parameter	            Required	Description
-    continuation_token  	No	        See Pagination.
     data_version	        Yes	        The data version. (v1, v2 ... or latest)
     end_time	            No	        Ending time in ISO 8601 (exclusive).
     exchange	            Yes	        Exchange code. See Exchanges Reference Data Endpoint.
     instrument_class	    Yes	        Instrument class. See Instruments Reference Data Endpoint.
     instrument          	Yes	        Instrument code. See Instruments Reference Data Endpoint.
     limit_orders        	No	        Number of orders to return on bid and ask side per snapshot. To retreive the best bid/ask, set this parameter to 1 (default: 10)
-    page_size	            No	        Number of snapshots to return. See Pagination (default: 10, max: 100).
     sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
     start_time	            No	        Starting time in ISO 8601 (inclusive).
     slippage	            No	        Order size (in quote asset) for which to calculate the percentage of slippage. Default: 0. When null is returned, not enough volume is present on the order book to execute the order.
@@ -401,7 +397,6 @@ class OrderBookSnapshots(KaikoData):
     instrument_class	    Yes	Instrument class. See Instruments Reference Data Endpoint.
     instrument          	Yes	Instrument code. See Instruments Reference Data Endpoint.
     limit_orders	        No	Number of orders to return on bid and ask side per snapshot. To retreive the best bid/ask, set this parameter to 1 (default: 10)
-    page_size	            No	Number of snapshots to return. See Pagination (default: 10, max: 100).
     sort	                No	Return the data in ascending (asc) or descending (desc) order. Default desc
     start_time	            No	Starting time in ISO 8601 (inclusive).
     
@@ -434,7 +429,6 @@ class OrderBookSnapshots(KaikoData):
     exchange	            Yes	        Exchange code. See Exchanges Reference Data Endpoint.
     instrument_class	    Yes	        Instrument class. See Instruments Reference Data Endpoint.
     instrument	            Yes	        Instrument code. See Instruments Reference Data Endpoint.
-    page_size             	No	        Number of snapshots to return data for. See Pagination (default: 10, max: 100).
     sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
     start_time           	No	        Starting time in ISO 8601 (inclusive).
 
@@ -488,7 +482,7 @@ class OrderBookSnapshots(KaikoData):
         if type_of_ob in ['Full', 'Raw']:
             self.parameter_space = 'continuation_token,end_time,limit_orders,page_size,sort,start_time,slippage,slippage_ref'.split(',')
         else:
-            self.parameter_space = 'continuation_token,end_time,page_size,sort,start_time'.slipt(',')
+            self.parameter_space = 'continuation_token,end_time,page_size,sort,start_time'.split(',')
         
         self.extra_args = {'type_of_ob': type_of_ob}
 
@@ -509,14 +503,38 @@ class OrderBookSnapshots(KaikoData):
                   'Data Feed delivery if you are trying to access data older than a month.')
 
     @staticmethod
-    def df_formatter(res, **kwargs):
-        assert kwargs.keys()
+    def df_formatter(res, extra_args: dict = None):
+        data_ = res['data']
+        if len(data_) == 0:
+            return pd.DataFrame()
         df = pd.DataFrame(res['data'], dtype='float')
+        if extra_args['type_of_ob'] == 'Full':
+            df = add_price_levels(df)
         df.set_index('poll_timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        if kwargs['type_of_ob'] in ['Depth', 'Full']:
-            df = add_price_levels(df)
         return df
+
+'''
+
+def format_raw_snapshots(res):
+    n_limit_orders = res['query']['limit_orders']
+    data_ = res['data']
+    datapoints = []
+    for datapoint in data_:
+        datapoint_dict = {'poll_timestamp': datapoint['timestamp'],
+                            'poll_date': datapoint['poll_date'],
+                            'timestamp': datapoint['timestamp'],}
+        for k in range(n_limit_orders):
+            datapoint_dict['ask_price_'+str(k)] = datapoint['asks'][k]['price']
+            datapoint_dict['ask_amount_'+str(k)] = datapoint['asks'][k]['amount']
+        for k in range(n_limit_orders):
+            datapoint_dict['bid_price_'+str(k)] = datapoint['bids'][k]['price']
+            datapoint_dict['bid_amount_'+str(k)] = datapoint['bids'][k]['amount']
+        datapoints.append(datapoint_dict)
+    return pd.DataFrame(datapoints)
+'''
+
+
 
 class OrderBookAggregations(KaikoData):
     """
@@ -658,11 +676,11 @@ class OrderBookAggregations(KaikoData):
                   'Data Feed delivery if you are trying to access data older than a month.')
 
     @staticmethod
-    def df_formatter(res, **kwargs):
+    def df_formatter(res, extra_args: dict = {}):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('poll_timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        if kwargs['type_of_ob'] in ['Full', 'Depth']:
+        if extra_args['type_of_ob'] == 'Full':
             df = add_price_levels(df)
         return df
 
@@ -808,7 +826,7 @@ class Aggregates(KaikoData):
         KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
         self._request_api()
     @staticmethod
-    def df_formatter(res, **kwargs):
+    def df_formatter(res, extra_args: dict = {}):
         df = pd.DataFrame(res['data'], dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -922,18 +940,16 @@ class AssetPricing(KaikoData):
         self._request_api()
 
     @staticmethod
-    def df_formatter(res, **kwargs):
+    def df_formatter(res, extra_args: dict = {}):
         data_ = res['data']
-        if len(data_) == 0:
-            return pd.DataFrame()
-        if 'sources' in data_[0].keys(): ## hacky solution for now
-            data_ = format_sources_pricing(data_)
         df = pd.DataFrame(data_, dtype='float')
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
 
-def format_sources_pricing(data_):
+'''
+
+def format_sources_cross_pricing(data_):
     data_points = []
     for data_point in data_:
         sources = data_point['sources']
@@ -949,6 +965,33 @@ def format_sources_pricing(data_):
     for k in range(len(data_)):
         data_[k]['sources'] = data_points[k]
     return data_
+
+def format_sources_pricing(data_):
+    data_points = []
+    for data_point in data_:
+        sources = data_point['sources']
+        base_for_df = []
+        for source in sources:
+            source['timestamp'] = data_point['timestamp']
+
+
+def format_sources_cross_pricing(data_):
+    data_points = []
+    for data_point in data_:
+        sources = data_point['sources']
+        base_for_df = []
+        for pair in sources.keys():
+            for k in range(len(sources[pair]['data'])):
+                exchange_rate = sources[pair]['data'][k] 
+                exchange_rate['pair'] = pair
+                base_for_df.append(exchange_rate)
+            final_price = sources[pair]['price']
+            base_for_df.append({"pair": pair, "exchange_code": "", "count": 0., "price": final_price, "volume": 0.})
+        data_points.append(pd.DataFrame(base_for_df))
+    for k in range(len(data_)):
+        data_[k]['sources'] = data_points[k]
+    return data_
+'''
 
 class Valuation(KaikoData):
     """
@@ -992,7 +1035,7 @@ class Valuation(KaikoData):
     The interval must be greater than twice the semi_length_window
     """
     
-    def __init__(self, bases: list[str], semi_length_window: str, percentages: list[str], quote: str, weights: list[str], params: dict = dict(page_size=100000), data_version: str = 'latest', client: KaikoClient = None, **kwargs):
+    def __init__(self, bases: list[str], semi_length_window: str, percentages: list[str], quote: str, weights: list[str], params: dict = dict(), data_version: str = 'latest', client: KaikoClient = None, **kwargs):
         assert len(bases) >= 1 and len(bases) <= 5, "Bases needs to have at least one element and maximum 5"
         assert len(percentages) <= 5, "Number of percentages must be les or equal to 5"
         assert len(bases) == len(weights), "Bases and length are not of the same weight"
@@ -1011,9 +1054,9 @@ class Valuation(KaikoData):
         KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
 
         self._request_api()
-### format_sources_valuation needs to be adapted. 
+
     @staticmethod
-    def df_formatter(res, **kwargs):
+    def df_formatter(res, extra_args: dict = {}):
         data_ = res['data']
         if len(data_) == 0:
             return pd.DataFrame()
@@ -1029,8 +1072,6 @@ def format_sources_valuation(data_):
     return data_
 
 ############################################### DEX Liquidity Data ###############################################
-
-#notes: df_formatter probably needs to be adapted !
 
 class DEXLiquidityEvents(KaikoData):
     """
@@ -1068,6 +1109,7 @@ class DEXLiquidityEvents(KaikoData):
     metadata	        Only for Uniswap v3. Upper and lower ticker of the interval     {"lower_ticker": 190650, "upper_ticker": 195610}
                         on which the liquidity is provided	
     """
+
     def __init__(self, params: dict = dict(), client=None, **kwargs):
 
         # Initialize endpoint required parameters
@@ -1080,11 +1122,10 @@ class DEXLiquidityEvents(KaikoData):
 
         self._request_api()
 
-##needs to be adapted 
     @staticmethod
-    def df_formatter(res, **kwargs):
+    def df_formatter(res, extra_args: dict = {}):
         df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('timestamp', inplace=True)
+        df.set_index('datetime', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
 
@@ -1100,13 +1141,13 @@ class DEXLiquiditySnapshots(KaikoData):
 
     Parameters:
 
-    Parameter	    Required	Description	Example
-    pool_address	Yes	        Pool address related to the liquidity event.	0x14de8287adc90f0f95bf567c0707670de52e3813
-    start_block	    No	        Starting block height.	129876
-    end_block	    No	        Ending block height.	129886
-    start_time	    No	        Starting time in ISO 8601 (inclusive).	2022-04-01T00:00:00.000Z
-    end_time	    No	        Ending time in ISO 8601 (inclusive).	2022-05-01T00:00:00.000Z
-    sort	        No	        Returns the data in ascending (asc) or descending (desc) order. Default: desc.	asc
+    Parameter	    Required	Description	                                                                        Example
+    pool_address	Yes	        Pool address related to the liquidity event.	                                    0x14de8287adc90f0f95bf567c0707670de52e3813
+    start_block	    No	        Starting block height.	                                                            129876
+    end_block	    No	        Ending block height.	                                                            129886
+    start_time	    No	        Starting time in ISO 8601 (inclusive).	                                            2022-04-01T00:00:00.000Z
+    end_time	    No	        Ending time in ISO 8601 (inclusive).	                                            2022-05-01T00:00:00.000Z
+    sort	        No	        Returns the data in ascending (asc) or descending (desc) order. Default: desc.	    asc
     
     Fields:
 
@@ -1117,854 +1158,31 @@ class DEXLiquiditySnapshots(KaikoData):
     exchange	    Code of the DEX.	                                    curv
     amounts	        Snapshot of the liquidity pool's tokens.	            See example
     datetime	    Timestamp at which the interval begins.                 In milliseconds.	1650441900000
-
     """
-    def __init__(self, pool_address, params: dict = dict(), client=None, **kwargs):
+
+    def __init__(self, pool_address: str, params: dict = dict(), client=None, **kwargs):
 
         # Initialize endpoint required parameters
         self.req_params = dict(pool_address=pool_address)
 
         self.parameter_space = 'start_block,end_block,start_time,end_time,sort'.split(',')
-        endpoint = _URL_DEX_LIQUIDITY_EVENTS
+        endpoint = _URL_DEX_LIQUIDITY_SNAPSHOTS
 
         KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
 
         self._request_api()
-    ##needs to be adapted 
+
     @staticmethod
-    def df_formatter(res, **kwargs):
+    def df_formatter(res, extra_args: dict = {}):
         df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('timestamp', inplace=True)
+        df.set_index('datetime', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
-
-############################################### Previous implementations ###############################################
-
-class OrderBookSnapshotsFull(KaikoData):
-    """
-    Full Order-book snapshots data
-    Gives access to one month of historical 10% order book snapshots. The full endpoint returns 
-    all the following order book data: the snapshot itself (bids and asks), the depth of the order book 
-    (the cummulative volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 
-    4%, 6%, 8% and 10% from the mid price), the spread, the mid price and, when the slippage parameter is not empty, 
-    the percentage of slippage for a given order size, either calculated from the best bid/ask or calculated from 
-    the mid price. All data is returned in descending order.
-
-    data_version is latest by default
-    instrument_class is spot by default
-
-    Parameters :
-
-    Parameter	            Required	Description
-    continuation_token	    No	        See Pagination(https://docs.kaiko.com/#usage).
-    end_time	            No	        Ending time in ISO 8601 (exclusive).
-    limit_orders	        No	        Number of orders to return on bid and ask side per snapshot. To retreive the best bid/ask, set this parameter to 1 (default: 10)
-    page_size	            No	        Number of snapshots to return. See Pagination (default: 10, max: 100, default is 100).
-    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
-    start_time	            No	        Starting time in ISO 8601 (inclusive).
-    slippage	            No	        Order size (in quote asset) for which to calculate the percentage of slippage. Default: 0. When null is returned, not enough volume is present on the order book to execute the order.
-    slippage_ref	        No	        Price point for which to calculate slippage from. Either from the mid price (mid_price) or from the best bid/ask (best). Default: mid_price.
-    
-
-    Fields:
-
-    Field	            Description
-    poll_timestamp	    The timestamp at which the raw data snapshot was taken.
-    poll_date	        The date at which the raw data snapshot was taken.
-    timestamp	        The timestamp provided by the exchange. null when not provided.
-    bid_volume_x	    The volume of bids placed within 0 and x% of the midprice.
-    ask_volume_x	    The volume of asks placed within 0 and x% of the midprice.
-    spread	            The difference between the best bid and the best ask at the time the snapshot was taken.
-    mid_price	        The mid price between the best bid and the best ask.
-    ask_slippage	    The percentage price slippage for a market buy order placed at the time that the order book snapshot was taken.
-    bid_slippage	    The percentage price slippage for a market sell order placed at the time that the order book snapshot was taken.
-    asks	            The sell orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to sell, displayed in the base currency. price is displayed in the quote currency.
-    bids	            The buy orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to buy, displayed in the base currency. price is displayed in the quote currency.
-    """
-
-    def __init__(self, exchange: str, instrument: str, instrument_class: str = 'spot', params: dict = dict(page_size=100),
-                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.parameter_space = 'continuation_token,end_time,limit_orders,page_size,sort,start_time,slippage,slippage_ref'.split(',')
-        self.req_params = dict(commodity='order_book_snapshots',
-                               data_version=data_version,
-                               exchange=exchange,
-                               instrument_class=instrument_class,
-                               instrument=instrument,
-                               )
-
-        endpoint = _URL_ORDER_BOOK_SNAPSHOTS_FULL
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-
-        self._request_api()
-
-        if len(self.df) == 0:
-            print(f'No data was found for the time range selected. \n{self.query_api}')
-            print('NB: only one month of historical order book snapshots is available from the API. Please setup a '
-                  'Data Feed delivery if you are trying to access data older than a month.')
-### NEEDS TO BE MODIFIED ???
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('poll_timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        df = add_price_levels(df)
-        return df
-
-class OrderBookSnapshotsRaw(KaikoData):
-    """
-    Identical to Full but only returns the raw snapshots of bids and asks without 
-    any additional metrics. The Full specific parameters (such as slippage and slippage_ref) are disabled but won't 
-    yield any errors when used. All data is returned in descending order.
-
-    data_version is latest by default 
-    instrument_class is spot by default 
-
-
-    Parameters:
-
-    Parameter	            Required	Description
-    continuation_token  	No      	See Pagination(https://docs.kaiko.com/#usage).
-    end_time	            No      	Ending time in ISO 8601 (exclusive).
-    limit_orders        	No      	Number of orders to return on bid and ask side per snapshot. To retreive the best bid/ask, set this parameter to 1 (default: 10)
-    page_size             	No      	Number of snapshots to return. See Pagination (default: 10, max: 100, default is 100).
-    sort	                No      	Return the data in ascending (asc) or descending (desc) order. Default desc
-    start_time          	No      	Starting time in ISO 8601 (inclusive).
-    slippage            	No      	Order size (in quote asset) for which to calculate the percentage of slippage. Default: 0. When null is returned, not enough volume is present on the order book to execute the order.
-    slippage_ref        	No      	Price point for which to calculate slippage from. Either from the mid price (mid_price) or from the best bid/ask (best). Default: mid_price.
-    
-    Fields:
-
-    Field	            Description
-    poll_timestamp  	The timestamp at which the raw data snapshot was taken.
-    poll_date	        The date at which the raw data snapshot was taken.
-    timestamp	        The timestamp provided by the exchange. null when not provided.
-    asks	            The sell orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to sell, displayed in the base currency. price is displayed in the quote currency.
-    bids	            The buy orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to buy, displayed in the base currency. price is displayed in the quote currency.
-    """
-    def __init__(self, exchange: str, instrument: str, instrument_class: str = 'spot', params: dict = dict(page_size=100),
-                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.parameter_space = 'continuation_token,end_time,limit_orders,page_size,sort,start_time,slippage,slippage_ref'.split(',')
-        self.req_params = dict(commodity='order_book_snapshots',
-                               data_version=data_version,
-                               exchange=exchange,
-                               instrument_class=instrument_class,
-                               instrument=instrument,
-                               )
-
-        endpoint = _URL_ORDER_BOOK_SNAPSHOTS_RAW
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-
-        self._request_api()
-
-        if len(self.df) == 0:
-            print(f'No data was found for the time range selected. \n{self.query_api}')
-            print('NB: only one month of historical order book snapshots is available from the API. Please setup a '
-                  'Data Feed delivery if you are trying to access data older than a month.')
-#### NEEDS TO BE MODIFIED ???
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('poll_timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        return df
-
-class OrderBookSnapshotsDepth(KaikoData):
-    """
-    Identical to Full  but only returns metrics on the depth of the order book 
-    (the cummulative volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 
-    2%, 4%, 6%, 8% and 10% from the mid price) per snapshot. The Full specific parameters (such as slippage, slippage_ref 
-    and limit_orders) are disabled but won't yield any errors when used. All data is returned in descending order.
-
-    data_version is latest by default
-    instrument_class is spot by default
-
-
-    Parameters:
-
-    Parameter	            Required	Description
-    continuation_token	    No	        See Pagination(https://docs.kaiko.com/#pagination).
-    end_time	            No	        Ending time in ISO 8601 (exclusive).
-    page_size	            No	        Number of snapshots to return data for. See Pagination (default: 10, max: 100).
-    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
-    start_time	            No	        Starting time in ISO 8601 (inclusive).
-
-    Fields:
-
-    Field	            Description
-    poll_timestamp	    The timestamp at which the raw data snapshot was taken.
-    poll_date	        The date at which the raw data snapshot was taken.
-    timestamp	        The timestamp provided by the exchange. null when not provided.
-    bid_volume_x	    The volume of bids placed within 0 and x% of the midprice.
-    ask_volume_x	    The volume of asks placed within 0 and x% of the midprice.
-    """
-
-    def __init__(self, exchange: str, instrument: str, instrument_class: str = 'spot', params: dict = dict(page_size=100),
-                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.parameter_space = 'continuation_token,end_time,page_size,sort,start_time'.split(',')
-        self.req_params = dict(commodity='order_book_snapshots',
-                               data_version=data_version,
-                               exchange=exchange,
-                               instrument_class=instrument_class,
-                               instrument=instrument,
-                               )
-
-        endpoint = _URL_ORDER_BOOK_SNAPSHOTS_DEPTH
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-
-        self._request_api()
-
-        if len(self.df) == 0:
-            print(f'No data was found for the time range selected. \n{self.query_api}')
-            print('NB: only one month of historical order book snapshots is available from the API. Please setup a '
-                  'Data Feed delivery if you are trying to access data older than a month.')
-##### NEEDS TO BE MODIFIED ????
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('poll_timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        df = add_price_levels(df)
-        return df
-
-class OrderBookSnapshotsSlippage(KaikoData):
-    """
-    Identical to Full but only returns slippage for a given order size, either 
-    calculated from the best bid/ask or calculated from the mid price. The Full and Raw specific parameter limit_orders 
-    is disabled but won't yield any errors when used. All data is returned in descending order.
-
-    data_version is latest by default 
-    instrument_class is spot by default 
-
-    Parameters: 
-
-    Parameter	            Required	Description
-    continuation_token	    No	See Pagination(https://docs.kaiko.com/#pagination).
-    end_time	            No	Ending time in ISO 8601 (exclusive).
-    page_size	            No	Number of snapshots to return data for. See Pagination (default: 10, max: 100, default is 100).
-    sort	                No	Return the data in ascending (asc) or descending (desc) order. Default desc
-    start_time	            No	Starting time in ISO 8601 (inclusive).
-    slippage	            No	Order size (in quote asset) for which to calculate the percentage of slippage. Default: 0. When null is returned, not enough volume is present on the order book to execute the order.
-    slippage_ref	        No	Price point for which to calculate slippage from. Either from the mid price (mid_price) or from the best bid/ask (best). Default: mid_price.
-
-    Fields:
-    Field	            Description
-    poll_timestamp	    The timestamp at which the raw data snapshot was taken.
-    poll_date	        The date at which the raw data snapshot was taken.
-    timestamp	        The timestamp provided by the exchange. null when not provided.
-    ask_slippage	    The percentage price slippage for a market buy order placed at the time that the order book snapshot was taken.
-    bid_slippage	    The percentage price slippage for a market sell order placed at the time that the order book snapshot was taken.
-
-    """
-    def __init__(self, exchange: str, instrument: str, instrument_class: str = 'spot', params: dict = dict(page_size=100),
-                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.parameter_space = 'continuation_token,end_time,page_size,sort,start_time'.split(',')
-        self.req_params = dict(commodity='order_book_snapshots',
-                               data_version=data_version,
-                               exchange=exchange,
-                               instrument_class=instrument_class,
-                               instrument=instrument,
-                               )
-
-        endpoint = _URL_ORDER_BOOK_SNAPSHOTS_SLIPPAGE
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-
-        self._request_api()
-
-        if len(self.df) == 0:
-            print(f'No data was found for the time range selected. \n{self.query_api}')
-            print('NB: only one month of historical order book snapshots is available from the API. Please setup a '
-                  'Data Feed delivery if you are trying to access data older than a month.')
-### needs to be modified ???
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('poll_timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        return df
-
-
-class OrderBookAggregationsFull(KaikoData):
-    """
-    Gives access to one month of historical 10% order book aggregated data. 
-    It returns metrics on the average depth of the order book (the cummulative volume of the base asset 
-    at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 4%, 6%, 8% and 10% from the mid price), 
-    the average spread, the average mid price and, when the slippage parameter is not empty, the average percentage 
-    of slippage for a given order size, either calculated from the best bid/ask or calculated from the mid price for 
-    a given interval. For each interval, the aggregates are calculated by taking the average metrics of each snapshot 
-    within that interval. For example, the aggregated 1 hour spread is calculated by taking all spreads of each snapshot 
-    within an hour and calculating the average. All data is returned in descending order.
-
-    data_version is latest by default
-    instrument_class is spot by default
-
-    Parameters:
-
-    Parameter	            Required	Description
-    continuation_token  	No	See Pagination(https://docs.kaiko.com/#pagination).
-    end_time	            No	Ending time in ISO 8601 (exclusive).
-    interval	            No	Interval period. Default 1h.
-    page_size	            No	Number of snapshots to return data for. See Pagination (default: 10, max: 100, default is 100).
-    sort	                No	Return the data in ascending (asc) or descending (desc) order. Default desc
-    start_time	            No	Starting time in ISO 8601 (inclusive).
-    slippage	            No	Order size (in quote asset) for which to calculate the percentage of slippage. Default: 0. When null is returned, not enough volume is present on the order book to execute the order.
-    slippage_ref	        No	Price point for which to calculate slippage from. Either from the mid price (mid_price) or from the best bid/ask (best). Default: mid_price.
-
-    Fields:
-
-    Field	            Description
-    poll_timestamp	    The timestamp at which the interval begins.
-    bid_volume_x	    The average volume of bids placed within 0 and x% of the midprice over a specified interval.
-    ask_volume_x	    The average volume of asks placed within 0 and x% of the midprice over a specified interval.
-    spread	            The average difference between the best bid and the best ask over a specified interval.
-    mid_price	        The average mid price between the best bid and the best ask over a specified interval
-    ask_slippage	    The average percentage of price slippage for a market buy order over a specified interval.
-    bid_slippage	    The average percentage of price slippage for a market sell order over a specified interval.
-
-    """
-    def __init__(self, exchange: str, instrument: str, instrument_class: str = 'spot', params: dict = dict(page_size=100),
-                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.req_params = dict(commodity='order_book_snapshots',
-                               data_version=data_version,
-                               exchange=exchange,
-                               instrument_class=instrument_class,
-                               instrument=instrument,
-                               )
-
-        self.parameter_space = 'continuation_token,end_time,interval,page_size,sort,start_time,slippage,slippage_ref'.split(',')
-        endpoint = _URL_ORDER_BOOK_AGGREGATIONS_FULL
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-        self._request_api()
-        if len(self.df) == 0:
-            print(f'No data was found for the time range selected. \n{self.query_api}')
-            print('NB: only one month of historical order book snapshots is available from the API. Please setup a '
-                  'Data Feed delivery if you are trying to access data older than a month.')
-#### Needs to be changed ???
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('poll_timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        df = add_price_levels(df)
-        return df
-
-class OrderBookAaggregationsDepth(KaikoData):
-    """
-    Identical to Full but only returns metrics on average the depth of the order book (the cummulative 
-    volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 4%, 6%, 
-    8% and 10% from the mid price) per snapshot. For each interval, the aggregates are calculated by taking 
-    the average metrics of each snapshot within that interval. For example, the aggregated 1 hour spread is 
-    calculated by taking all spreads of each snapshot within an hour and calculating the average. The Full 
-    specific parameters (such as slippage, slippage_ref) are disabled but won't yield any errors when used. 
-    All data is returned in descending order.
-    
-    data_version is latest by default
-    instrument_class is spot by default
-
-    Parameters:
-
-    Parameter	            Required	Description
-    continuation_token	    No	        See Pagination(https://docs.kaiko.com/#pagination).
-    end_time	            No	        Ending time in ISO 8601 (exclusive).
-    interval	            No	        Interval period. Default 1h.
-    page_size             	No	        Number of snapshots to return data for. See Pagination (default: 10, max: 100, default is 100).
-    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
-    start_time	            No	        Starting time in ISO 8601 (inclusive).
-
-    Fields:
-
-    Field	        Description
-    poll_timestamp	The timestamp at which the interval begins
-    bid_volume_x	The average volume of bids placed within 0 and x% of the midprice over a specified interval.
-    ask_volume_x	The average volume of asks placed within 0 and x% of the midprice over a specified interval.
-    """
-
-    def __init__(self, exchange: str, instrument: str, instrument_class: str = 'spot', type_of_ob: str = 'full',params: dict = dict(page_size=100),
-                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.req_params = dict(commodity='order_book_snapshots',
-                               data_version='latest',
-                               exchange=exchange,
-                               instrument_class=instrument_class,
-                               instrument=instrument,
-                               )
-
-        self.parameter_space = 'continuation_token,end_time,interval,page_size,sort,start_time'.split(',')
-        endpoint = _URL_ORDER_BOOK_AGGREGATIONS_DEPTH
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-        self._request_api()
-        if len(self.df) == 0:
-            print(f'No data was found for the time range selected. \n{self.query_api}')
-            print('NB: only one month of historical order book snapshots is available from the API. Please setup a '
-                  'Data Feed delivery if you are trying to access data older than a month.')
-### Needs to be changed ???
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('poll_timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        df = add_price_levels(df)
-        return df
-
-class OrderBookAggregationsSlippage(KaikoData):
-    """
-    Identical to Full but only returns the average slippage for a given order size, either calculated from the best 
-    bid/ask or calculated from the mid price. For each interval, the aggregates are calculated by taking the 
-    average metrics of each snapshot within that interval. For example, the aggregated 1 hour spread is calculated 
-    by taking all spreads of each snapshot within an hour and calculating the average. All data is returned in 
-    descending order.
-
-    data_version is latest by default
-    instrument_class is spot by default
-
-    Parameters:
-
-    Parameter	            Required	Description
-    commodity	            Yes	The data commodity.
-    continuation_token  	No	See Pagination(https://docs.kaiko.com/#pagination).
-    data_version        	Yes	The data version. (v1, v2 ... or latest)
-    end_time            	No	Ending time in ISO 8601 (exclusive).
-    exchange            	Yes	Exchange code. See Exchanges Reference Data Endpoint.
-    instrument_class    	Yes	Instrument class. See Instruments Reference Data Endpoint.
-    instrument	            Yes	Instrument code. See Instruments Reference Data Endpoint.
-    interval            	No	Interval period. Default 1h.
-    page_size           	No	Number of snapshots to return data for. See Pagination (default: 10, max: 100).
-    sort                	No	Return the data in ascending (asc) or descending (desc) order. Default desc
-    start_time          	No	Starting time in ISO 8601 (inclusive).
-    slippage            	No	Order size (in quote asset) for which to calculate the percentage of slippage. Default: 0. When null is returned, not enough volume is present on the order book to execute the order.
-    slippage_ref	        No	Price point for which to calculate slippage from. Either from the mid price (mid_price) or from the best bid/ask (best). Default: mid_price.
-
-    Fields:
-
-    Field	        Description
-    poll_timestamp	The timestamp at which the interval begins.
-    ask_slippage	The average percentage of price slippage for a market buy order over a specified interval.
-    bid_slippage	The average percentage of price slippage for a market sell order over a specified interval.
-    """
-    def __init__(self, exchange: str, instrument: str, instrument_class: str = 'spot', type_of_ob: str = 'full',params: dict = dict(page_size=100),
-                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.req_params = dict(commodity='order_book_snapshots',
-                               data_version='latest',
-                               exchange=exchange,
-                               instrument_class=instrument_class,
-                               instrument=instrument,
-                               )
-
-        self.parameter_space = 'continuation_token,end_time,interval,page_size,sort,start_time'.split(',')
-        endpoint = _URL_ORDER_BOOK_AGGREGATIONS_DEPTH
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-        self._request_api()
-        if len(self.df) == 0:
-            print(f'No data was found for the time range selected. \n{self.query_api}')
-            print('NB: only one month of historical order book snapshots is available from the API. Please setup a '
-                  'Data Feed delivery if you are trying to access data older than a month.')
-### Needs to be changed ???
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('poll_timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        return df
-
-
-class AggregatesOHLCV(KaikoData):
-    """
-    Retrieves the OHLCV history for an instrument on an exchange. 
-    The interval parameter is suffixed with s, m, h or d to specify seconds, minutes, hours or days, 
-    respectively. By making use of the sort parameter, data can be returned in ascending asc or descending desc order.
-
-    data_version is latest
-    instrument_class is spot 
-
-    Parameters:
-
-    Parameter	            Required	Description
-    continuation_token  	No	        See Pagination(https://docs.kaiko.com/#pagination).
-    end_time	            No	        Ending time in ISO 8601 (exclusive).
-    interval	            No	        Interval period. Default 1d.
-    page_size             	No	        See Pagination (min: 1, max: 100000, default: 100000).
-    start_time           	No	        Starting time in ISO 8601 (inclusive).
-    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
-
-    Fields:
-
-    Field	    Description
-    timestamp	Timestamp at which the interval begins.
-    open	    Opening price of interval. null when no trades reported.
-    high	    Highest price during interval. null when no trades reported.
-    low	        Lowest price during interval. null when no trades reported.
-    close	    Closing price of interval. null when no trades reported.
-    volume	    Volume traded in interval. 0 when no trades reported.
-    """
-    def __init__(self, exchange: str, instrument: str, instrument_class: str = 'spot', params: dict = dict(page_size=100000), 
-                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.req_params = dict(commodity='trades',
-                               data_version=data_version,
-                               exchange=exchange,
-                               instrument_class=instrument_class,
-                               instrument=instrument,
-                               )
-        print("req_params initiliazed")
-
-        self.parameter_space = 'continuation_token,end_time,interval,page_size,start_time,sort'.split(',')
-        endpoint = _URL_AGGREGATES_OHLCV
-        print("endpoint is done")
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-        print("requesting api")
-        self._request_api()
-        print("api request done")
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        return df
-
-class AggregatesVWAP(KaikoData):
-    """
-    Retrieves aggregated VWAP (volume-weighted average price) history for an instrument on an exchange. The interval 
-    parameter is suffixed with s, m, h or d to specify seconds, minutes, hours or days, respectively. By making use 
-    of the sort parameter, data can be returned in ascending asc or descending desc (default) order.
-
-    data_version is latest by default
-    instrument_class is spot by default 
-
-    Parameters:
-
-    Parameter	            Required	Description
-    continuation_token	    No	        See Pagination(https://docs.kaiko.com/#pagination).
-    end_time	            No	        Ending time in ISO 8601 (exclusive).
-    interval            	No	        Interval period. Default 1d.
-    page_size	            No	        See Pagination (min: 1, max: 100000, default is 100000).
-    start_time	            No      	Starting time in ISO 8601 (inclusive).
-    sort	                No      	Return the data in ascending (asc) or descending (desc) order. Default desc
-
-    Fields: 
-
-    Field	Description
-    timestamp	Timestamp at which the interval begins.
-    price	Volume-weighted average price. null when no trades reported.
-    """
-
-    def __init__(self, exchange: str, instrument: str, instrument_class: str = 'spot', params: dict = dict(page_size=100000), 
-                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.req_params = dict(commodity='trades',
-                               data_version=data_version,
-                               exchange=exchange,
-                               instrument_class=instrument_class,
-                               instrument=instrument,
-                               )
-
-        self.parameter_space = 'continuation_token,end_time,interval,page_size,start_time,sort'.split(',')
-        endpoint = _URL_AGGREGATES_VWAP
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-
-        self._request_api()
-
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        return df
-
-class AggregatesCOHLCV(KaikoData):
-    """
-    Retrieves the trade count, OHLCV and VWAP history for an instrument on an exchange. The interval parameter is 
-    suffixed with s, m, h or d to specify seconds, minutes, hours or days, respectively. By making use of the sort parameter, 
-    data can be returned in ascending asc (default) or descending desc order.
-
-    data_version is latest by default
-    instrument_class is spot by default
-
-    Parameters:
-
-    Parameter	            Required	Description
-    continuation_token  	No	See Pagination(https://docs.kaiko.com/#pagination).
-    end_time	            No	Ending time in ISO 8601 (exclusive).
-    interval	            No	Interval period. Default 1d.
-    page_size	            No	See Pagination (min: 1, max: 100000, default is 100000).
-    start_time	            No	Starting time in ISO 8601 (inclusive).
-    sort	                No	Return the data in ascending (asc) or descending (desc) order. Default desc
-
-    Fields:
-
-    Field	    Description
-    timestamp	Timestamp at which the interval begins.
-    count	    Then number of trades. 0 when no trades reported.
-    open	    Opening price of interval. null when no trades reported.
-    high	    Highest price during interval. null when no trades reported.
-    low	        Lowest price during interval. null when no trades reported.
-    close	    Closing price of interval. null when no trades reported.
-    volume	    Volume traded in interval. 0 when no trades reported.
-    """
-
-
-    def __init__(self, exchange: str, instrument: str, instrument_class: str = 'spot', params: dict = dict(page_size=100000), 
-                data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.req_params = dict(commodity='trades',
-                               data_version=data_version,
-                               exchange=exchange,
-                               instrument_class=instrument_class,
-                               instrument=instrument,
-                               )
-
-        self.parameter_space = 'continuation_token,end_time,interval,page_size,start_time,sort'.split(',')
-        endpoint = _URL_AGGREGATES_COHLCV
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-
-        self._request_api()
-
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        return df
-
-
-class PricingSpotDirectExchangeRate(KaikoData):
-    """
-    Generates an aggregated price for an asset pair across all exchanges with spot markets for the 
-    pair. Only asset combinations which are actively being traded on one of our covered exchanges 
-    are being taken into account for the calculation of the price. Unsupported asset 
-    combinations will return no data. To return data used as input for the calculation of the 
-    aggregated price, set the sources parameter to true. 
-    Setting the sources parameter to false (default) will yield a faster response time. 
-    By making use of the sort parameter, data can be returned in ascending asc or descending 
-    desc order (default).
-
-    data_version is latest by default
-
-    Parameters:
-
-    Parameter	            Required	Description
-    end_time	            No	        Ending time in ISO 8601 (exclusive).
-    exclude_exchanges	    No	        List of exchanges' code to exclude from the calculation. See Instruments Reference Data Endpoint. Only available in API v2.
-    interval	            No	        Interval period. Default 1d.
-    include_exchanges	    No	        List of exchanges' code to include in the calculation. See Instruments Reference Data Endpoint. Only available in API v2.
-    page_size	            No	        See Pagination (min: 1, max: 1000, default is 1000).
-    start_time	            No	        Starting time in ISO 8601 (inclusive).
-    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default is asc in API v1, desc in API v2.
-    sources 	            No	        boolean. If true, returns all prices which were used to calculate aggregated price. Default is false
-    
-    Field	    Description
-    timestamp	Timestamp at which the interval begins.
-    price	    Aggregated VWAP. null when no trades reported.
-    volume	    Total volume traded in interval. 0 when no trades reported.
-    count	    Total amount of trades reported during interval. 0 when no trades reported.
-    sources     Sources for the prices (if included)
-    """
-    def __init__(self, base_asset: str, quote_asset: str, params: dict = dict(page_size=1000), data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.req_params = dict(data_version=data_version,
-                                base_asset=base_asset,
-                                quote_asset=quote_asset,
-                               )
-
-        self.parameter_space = 'end_time,exclude_exchanges,interval,include_exchanges,page_size,start_time,sort,sources'.split(',')
-        endpoint = _URL_PRICING_SPOT_DIRECT_EXCHANGE_RATE
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-
-        self._request_api()
-### needs to be adapted ? 
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        data_ = res['data']
-        if len(data_) == 0:
-            return pd.DataFrame()
-        if 'sources' in data_[0].keys(): ## hacky solution for now
-            data_ = format_sources_pricing(data_)
-        df = pd.DataFrame(data_, dtype='float')
-        df.set_index('timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        return df
-
-class PricingSpotExchangeRate(KaikoData):
-    """
-    Returns the price of any asset quoted in a Fiat currency within Open Exchange Rate. 
-    The USD price is calculated based on the path of the highest liquidity, with an additional 
-    step using forex rates to get the final fiat price. This means that, even though an asset 
-    might trade directly against all Open Exchange Rate currencies, the price might still be 
-    established by using cross-rates1. In cases where the most liquid path changed over time, 
-    this will be taken into account in the calculation of the price for each interval. To have an 
-    overview of what data was used to calculate the price, set the sources parameter to true. 
-    Setting the sourcesparameter to false (default) will yield a faster response time. 
-    By making use of the sort parameter, data can be returned in ascending asc (default) or 
-    descending desc order.
-
-    data_version is latest by default
-
-    AVAILABLE ONLY WITH V2.
-
-    Parameters:
-
-    Parameter	            Required	Description
-    end_time	            No	        Ending time in ISO 8601 (exclusive).
-    exclude_exchanges	    No	        List of exchanges' code to exclude from the calculation. See Instruments Reference Data Endpoint. Only available in API v2.
-    interval	            No	        Interval period. Default 1d.
-    include_exchanges	    No	        List of exchanges' code to include in the calculation. See Instruments Reference Data Endpoint. Only available in API v2.
-    outliers_strategy	    No	        Either median_perc, modified_zscore or zscore. See the Outlier Management section below.
-    outliers_min_data	    No	        Number of minimum data points needed to trigger the outlier detecton. Default to 4.
-    outliers_threshold	    No	        Threshold to use. Usage depends on the chosen outlier management strategy.
-    page_size	            No	        See Pagination (min: 1, max: 1000, default is 1000).
-    start_time	            No	        Starting time in ISO 8601 (inclusive).
-    sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default is asc
-    sources     	        No	        boolean. If true, returns all prices which were used to calculate aggregated price. Default is false
-
-
-    Field	    Description
-    timestamp	Timestamp at which the interval begins.
-    price	    Aggregated VWAP. null when no trades reported.
-    volume	    Total volume traded in interval. 0 when no trades reported.
-    count	    Total amount of trades reported during interval. 0 when no trades reported.
-
-    """
-    def __init__(self, base_asset: str, quote_asset: str, params: dict = dict(page_size=1000), data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-
-        # Initialize endpoint required parameters
-        self.req_params = dict(data_version=data_version,
-                                base_asset=base_asset,
-                                quote_asset=quote_asset,
-                               )
-
-        self.parameter_space = 'end_time,exclude_exchanges,interval,include_exchanges,outliers_strategy,outliers_min_data,outliers_threshold,page_size,start_time,sort,sources'.split(',')
-        endpoint = _URL_PRICING_SPOT_EXCHANGE_RATE
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-
-        self._request_api()
-
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        data_ = res['data']
-        if len(data_) == 0:
-            return pd.DataFrame()
-        if 'sources' in data_[0].keys(): ## hacky solution for now
-            data_ = format_sources_pricing(data_)
-        df = pd.DataFrame(data_, dtype='float')
-        df.set_index('timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        return df
-
-class PricingValuation(KaikoData):
-    """
-    Allows you to build completely customizable single-asset or multi-asset price feeds for NAV 
-    calculations, portfolio valuation, asset allocation strategies, and indices.
-
-    data_version is latest by default
-    
-    Parameters:
-
-    Parameter	            Required	Description
-    continuation_token	    No	        See Pagination.
-    end_time	            No	        Last fixing of the calculation in ISO 8601 (exclusive).
-    exchanges	            No	        List of exchanges to source data from. See Instruments Reference Data Endpoint. Default: all exchanges
-    interval	            No	        Frequency in time unit after the first fixing. Default: 1d.
-    percentages	            Yes	        List of percentages for outlier management. To not enforce any outlier management, use 1
-    start_time	            No	        First fixing of the calculation in ISO 8601 (inclusive).
-    semi_length_window	    Yes	        The time interval to compute the transaction.
-    sources	                No	        boolean. If true, returns all prices and volumes which were used to calculate valuation price. Default: false
-    quote	                Yes	        The fiat pricing currency.
-    weights	                Yes	        Weighting list of base assets. For single-asset price feeds use an asset weighting of “1”
-    
-    Fields:
-
-    Field	        Description
-    timestamp	    Timestamp at which the interval begins.
-    percentage	    Percent of the price distribution centered around the median price.
-    price	        The composite price, with a base of 100.
-    pair	        The constituent pair.
-    contribution	The asset contribution to the composite price.
-    ref_price	    The reference price per asset.
-    weight	        The weight per asset.
-
-
-    Computation and Constraints
-
-    Considering the volume of data points processed for the computation of each data point, some parameter constraints have been implemented 
-    in order to optimize computation time:
-
-    The number of bases must be less or equal to 5
-    The number of percentages must be less or equal to 5
-    weights and bases must have the same length
-    The order of bases and their respective weighting must match
-    weights must sum up to 1
-    Each response will only contain maximum 7 days of data. To get more data, the continuation_token should be used.
-    The interval must be greater than twice the semi_length_window
-    
-    """
-    def __init__(self, bases: list[str], semi_length_window: str, percentages: list[str], quote: str, weights: list[str],params: dict = dict(page_size=100000), data_version: str = 'latest', client: KaikoClient = None, **kwargs):
-        assert len(bases) >= 1 and len(bases) <= 5, "Bases needs to have at least one element and maximum 5"
-        assert len(bases) == len(weights), "Bases and length are not of the same weight"
-        assert len(percentages) <= 5, "Number of percentages must be les or equal to 5"
-        # Initialize endpoint required parameters
-        self.req_params = dict(data_version=data_version,
-                                bases=bases,
-                                semi_length_window=semi_length_window,
-                                percentages=percentages,
-                                quote=quote,
-                                weights=weights,
-                               )
-
-        self.parameter_space = 'continuation_token,end_time,exchanges,interval,start_time,sources'.split(',')
-        endpoint = _URL_PRICING_VALUATION
-
-        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
-
-        self._request_api()
-
-    @staticmethod
-    def df_formatter(res, **kwargs):
-        data_ = res['data']
-        if len(data_) == 0:
-            return pd.DataFrame()
-        if 'sources' in data_[0].keys(): ## hacky solution for now
-            data_ = format_sources_valuation(data_)
-        
-        df = pd.DataFrame(res['data'], dtype='float')
-        df.set_index('timestamp', inplace=True)
-        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
-        return df
-
-
-
-
 
 if __name__ == '__main__':
     FORMAT = "%(asctime)-15s %(levelname)-8s | %(lineno)d %(filename)s: %(message)s"
     logging.basicConfig(filename='/var/tmp/kaiko.log', level=logging.DEBUG, format=FORMAT, filemode='a')
     # test = OrderBookAverages('cbse', 'btc-usd', start_time='2020-08-06', interval='10m')
 
-    test = AggregatesOHLCV('cbse', 'eth-usd', start_time='2020-08-06', interval='1d')
+    test = Aggregates(type_of_aggregate='OHLCV', exchange = 'cbse', instrument = 'eth-usd', start_time='2020-08-06', interval='1d')
     print(test.df)
