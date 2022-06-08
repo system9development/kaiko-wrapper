@@ -4,11 +4,7 @@ Please note that this repository is not officially maintained by Kaiko, contribu
 
 ## Notes on this version 
 
-This is a work in progress, it's a modification of Sacha Ghebali's implementation 
-
-It will get better moving forward, any input is welcome just send me an email (khaled@aave.com) or comment directly on github.
-
-Pull request on Sacha's github is coming as soon as this implementation is stable. 
+For the current implementation: Valuation and DEXLiquidityEvents and DexLiquiditySnapshots are not stable yet.
 
 ### Importing the API to a project
 
@@ -28,7 +24,7 @@ candles for BTC/USD on LMAX from August 2020 and stores it into the attribute `d
 kc = kaiko.KaikoClient(api_key='<YOUR_API_KEY_HERE>')
 
 # Getting some simple daily candles
-ds = kaiko.AggregatesOHLCV('lmax', 'btc-usd', start_time='2020-08', interval='1d', client=kc)
+ds = kaiko.Aggregates(type_of_aggregate = 'COHLCV', exchange = 'lmax', instrument = 'btc-usd', start_time='2020-08', interval='1d', client=kc)
 
 # Retrieve the dataframe containing the data
 ds.df

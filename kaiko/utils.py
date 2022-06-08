@@ -51,14 +51,9 @@ def request_data(url: str, headers: dict = default_headers, params: dict = None,
     """
     # use default session
     session = requests_retry_session(**session_params)
-    print("utils.py: request_data: request_retry_session done")
-    print(f"url: {url}")
-    print(f"headers: {headers}")
-    print(f"Params: {params}")
     response = session.get(url, headers=headers, params=params)
     res = response.json()
     if pagination:
-        print("inside pagination")
         res_tmp = res
         res['total_queries'] = 1
         while 'next_url' in res_tmp.keys():
@@ -98,11 +93,9 @@ def request_df(url: str, return_query: bool = False, return_res: bool = False, d
             query = res['query']
         else:
             query = None
-        print("formatting succeeded")
     except Exception as e:
         query = (e, res)
         df = pd.DataFrame()
-        print("formatting failed")
     if return_query and return_res:
         return df, query, res
     elif return_query and not(return_res):

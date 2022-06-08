@@ -248,13 +248,12 @@ class KaikoData:
 
     @staticmethod
     def df_formatter(res, extra_args: dict = {}):
-        df = pd.DataFrame(res['data'], dtype='float')
+        df = pd.DataFrame(res['data'])
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
 
     def _request_api(self):
-        print("kaiko.py: _request_api inside start")## for debugging
         self.df, self.query_api, self.query_res = ut.request_df(self.url,
                                                 return_query = True,
                                                 return_res = True,
@@ -264,7 +263,6 @@ class KaikoData:
                                                 extra_args = self.extra_args,
                                                 pagination = self.pagination
                                                 )
-        print("kaiko.py: _request_api done")
 
     def load_catalogs(self):
         """ Loads catalogs in the client """
@@ -324,7 +322,7 @@ class Trades(KaikoData):
 
     @staticmethod
     def df_formatter(res, extra_args: dict = {}):
-        df = pd.DataFrame(res['data'], dtype='float')
+        df = pd.DataFrame(res['data'])
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
@@ -448,6 +446,8 @@ class OrderBookSnapshots(KaikoData):
     calculated from the best bid/ask or calculated from the mid price. The Full and Raw specific parameter limit_orders 
     is disabled but won't yield any errors when used. All data is returned in descending order.
 
+    If you give it no slipapge, default being 0, it will give null results for ask and bid slippage
+
     Parameters:
 
     Parameter	            Required	Description
@@ -481,9 +481,10 @@ class OrderBookSnapshots(KaikoData):
 
         if type_of_ob in ['Full', 'Raw']:
             self.parameter_space = 'continuation_token,end_time,limit_orders,page_size,sort,start_time,slippage,slippage_ref'.split(',')
-        else:
+        elif type_of_ob == 'Depth':
             self.parameter_space = 'continuation_token,end_time,page_size,sort,start_time'.split(',')
-        
+        else:
+            self.parameter_space = 'continuation_token,end_time,page_size,sort,start_time,slippage,slippage_ref'.split(',')
         self.extra_args = {'type_of_ob': type_of_ob}
 
         endpoints = {'Full': _URL_ORDER_BOOK_SNAPSHOTS_FULL, 'Raw': _URL_ORDER_BOOK_SNAPSHOTS_RAW, 'Depth': _URL_ORDER_BOOK_SNAPSHOTS_DEPTH, 'Slippage': _URL_ORDER_BOOK_SNAPSHOTS_SLIPPAGE}
@@ -507,7 +508,7 @@ class OrderBookSnapshots(KaikoData):
         data_ = res['data']
         if len(data_) == 0:
             return pd.DataFrame()
-        df = pd.DataFrame(res['data'], dtype='float')
+        df = pd.DataFrame(res['data'], dtype = 'float')
         if extra_args['type_of_ob'] == 'Full':
             df = add_price_levels(df)
         df.set_index('poll_timestamp', inplace=True)
@@ -657,7 +658,7 @@ class OrderBookAggregations(KaikoData):
                                instrument_class=instrument_class,
                                instrument=instrument,
                                )
-        if type_of_ob == 'Full':
+        if type_of_ob in ['Full','Slippage']:
             self.parameter_space = 'continuation_token,end_time,interval,page_size,sort,start_time,slippage,slippage_ref'.split(',')
         else:
             self.parameter_space = 'continuation_token,end_time,interval,page_size,sort,start_time'.split(',')
@@ -677,7 +678,7 @@ class OrderBookAggregations(KaikoData):
 
     @staticmethod
     def df_formatter(res, extra_args: dict = {}):
-        df = pd.DataFrame(res['data'], dtype='float')
+        df = pd.DataFrame(res['data'], dtype = 'float')
         df.set_index('poll_timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         if extra_args['type_of_ob'] == 'Full':
@@ -821,13 +822,12 @@ class Aggregates(KaikoData):
         self.parameter_space = 'continuation_token,end_time,interval,page_size,start_time,sort'.split(',')
         endpoints = {'OHLCV': _URL_AGGREGATES_OHLCV, 'COHLCV': _URL_AGGREGATES_COHLCV, 'VWAP': _URL_AGGREGATES_VWAP}
         endpoint = endpoints[type_of_aggregate]
-        print("endpoint is done")
 
         KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
         self._request_api()
     @staticmethod
     def df_formatter(res, extra_args: dict = {}):
-        df = pd.DataFrame(res['data'], dtype='float')
+        df = pd.DataFrame(res['data'])
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
@@ -942,7 +942,7 @@ class AssetPricing(KaikoData):
     @staticmethod
     def df_formatter(res, extra_args: dict = {}):
         data_ = res['data']
-        df = pd.DataFrame(data_, dtype='float')
+        df = pd.DataFrame(data_)
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
@@ -1063,7 +1063,7 @@ class Valuation(KaikoData):
         if 'sources' in data_[0].keys(): ## hacky solution for now
             data_ = format_sources_valuation(data_)
         
-        df = pd.DataFrame(res['data'], dtype='float')
+        df = pd.DataFrame(res['data'])
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
@@ -1124,7 +1124,7 @@ class DEXLiquidityEvents(KaikoData):
 
     @staticmethod
     def df_formatter(res, extra_args: dict = {}):
-        df = pd.DataFrame(res['data'], dtype='float')
+        df = pd.DataFrame(res['data'])
         df.set_index('datetime', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
@@ -1174,7 +1174,7 @@ class DEXLiquiditySnapshots(KaikoData):
 
     @staticmethod
     def df_formatter(res, extra_args: dict = {}):
-        df = pd.DataFrame(res['data'], dtype='float')
+        df = pd.DataFrame(res['data'])
         df.set_index('datetime', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
