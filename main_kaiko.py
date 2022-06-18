@@ -25,11 +25,33 @@ kaiko_api_key = os.getenv("KAIKO_API_KEY")
 
 kc = kaiko.KaikoClient(api_key=kaiko_api_key)
 
-ds = kaiko.Aggregates(type_of_aggregate = 'COHLCV', exchange = 'lmax', instrument = 'btc-usd', start_time='2020-08', interval='1d', client=kc)
+# ds = kaiko.Aggregates(type_of_aggregate='COHLCV',
+#                       exchange='lmax',
+#                       instrument = 'btc-usd',
+#                       start_time='2020-08',
+#                       interval='1d',
+#                       client=kc)
 
-df1 = ds.df
+# df1 = ds.df
 
-ds = kaiko.DerivativesReference(exchange="okex", 
-                                instrument_class="future", 
-                                instrument="ethusd220624",
+dref = kaiko.DerivativesReference(exchange="okex",
+                                  instrument_class="future",
+                                  client=kc)
+
+df_ref= dref.df
+
+drisk = kaiko.DerivativesRisk(exchange="okex",
+                              instrument_class="future",
+                              instrument="btcusd220624",
+                              interval="1d",
+                              client=kc)
+
+df_risk = drisk.df
+
+dprice = kaiko.DerivativesPrice(exchange="okex",
+                                instrument_class="future",
+                                instrument="btcusd220624",
+                                interval="1h",
                                 client=kc)
+
+df_price = dprice.df

@@ -52,6 +52,7 @@ def request_data(url: str, headers: dict = default_headers, params: dict = None,
     # use default session
     session = requests_retry_session(**session_params)
     response = session.get(url, headers=headers, params=params)
+
     res = response.json()
     if pagination:
         res_tmp = res
@@ -86,6 +87,7 @@ def request_df(url: str, return_query: bool = False, return_res: bool = False, d
     :param df_formatter: Formatter function to transform the JSON's data result into a DataFrame.
     :return: DataFrame containing the data.
     """
+
     res = request_data(url, **kwargs)
     try:
         df = df_formatter(res, extra_args = extra_args)
@@ -111,7 +113,7 @@ def convert_timestamp_unix_to_datetime(ts):
     Convert a unix millisecond timestamp to pandas datetime format.
 
     :param ts: Timestamp in unix millisecond format.
-    :return: 
+    :return:
     """
     return pd.to_datetime(ts, unit='ms')
 

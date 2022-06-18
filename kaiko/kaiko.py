@@ -201,6 +201,7 @@ class KaikoData:
         self.endpoint = self.client.base_url + endpoint
         self.params = params
         self.req_params = req_params
+
         self._form_url()
         self.extra_args = extra_args
 
@@ -268,7 +269,7 @@ class KaikoData:
         """ Loads catalogs in the client """
         self.client.load_catalogs()
 
-## notes: add pagination to parameters ??? no 
+## notes: add pagination to parameters ??? no
 ## notes: add live data ?? ~maybe
 
 
@@ -276,8 +277,8 @@ class KaikoData:
 
 class Trades(KaikoData):
     """
-    Retrieves trades for an instrument on a specific exchange. Trades are sorted 
-    by time; ascendingly in v1, descendingly in v2. Note that taker_side_sell can be null in the 
+    Retrieves trades for an instrument on a specific exchange. Trades are sorted
+    by time; ascendingly in v1, descendingly in v2. Note that taker_side_sell can be null in the
     cases where this information was not available at collection.
 
     instrument_class is spot by default
@@ -341,15 +342,15 @@ class OrderBookSnapshots(KaikoData):
     page_size is 100 by default
 
     ---------------------------------------------------------------------   Full   ---------------------------------------------------------------------
-    
+
     Full Order-book snapshots data
-    Gives access to one month of historical 10% order book snapshots. The full endpoint returns 
-    all the following order book data: the snapshot itself (bids and asks), the depth of the order book 
-    (the cummulative volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 
-    4%, 6%, 8% and 10% from the mid price), the spread, the mid price and, when the slippage parameter is not empty, 
-    the percentage of slippage for a given order size, either calculated from the best bid/ask or calculated from 
+    Gives access to one month of historical 10% order book snapshots. The full endpoint returns
+    all the following order book data: the snapshot itself (bids and asks), the depth of the order book
+    (the cummulative volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%,
+    4%, 6%, 8% and 10% from the mid price), the spread, the mid price and, when the slippage parameter is not empty,
+    the percentage of slippage for a given order size, either calculated from the best bid/ask or calculated from
     the mid price. All data is returned in descending order.
-    
+
     Parameters :
 
     Parameter	            Required	Description
@@ -378,11 +379,11 @@ class OrderBookSnapshots(KaikoData):
     bid_slippage	    The percentage price slippage for a market sell order placed at the time that the order book snapshot was taken.
     asks	            The sell orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to sell, displayed in the base currency. price is displayed in the quote currency.
     bids	            The buy orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to buy, displayed in the base currency. price is displayed in the quote currency.
- 
+
     ---------------------------------------------------------------------   Raw   ---------------------------------------------------------------------
 
-    Identical to Full but only returns the raw snapshots of bids and asks without 
-    any additional metrics. The Full specific parameters (such as slippage and slippage_ref) are disabled but won't 
+    Identical to Full but only returns the raw snapshots of bids and asks without
+    any additional metrics. The Full specific parameters (such as slippage and slippage_ref) are disabled but won't
     yield any errors when used. All data is returned in descending order.
 
     Parameters:
@@ -397,7 +398,7 @@ class OrderBookSnapshots(KaikoData):
     limit_orders	        No	Number of orders to return on bid and ask side per snapshot. To retreive the best bid/ask, set this parameter to 1 (default: 10)
     sort	                No	Return the data in ascending (asc) or descending (desc) order. Default desc
     start_time	            No	Starting time in ISO 8601 (inclusive).
-    
+
     Fields:
 
     Field	            Description
@@ -406,12 +407,12 @@ class OrderBookSnapshots(KaikoData):
     timestamp	        The timestamp provided by the exchange. null when not provided.
     asks	            The sell orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to sell, displayed in the base currency. price is displayed in the quote currency.
     bids	            The buy orders in the snapshot. If the limit_oders parameter is used, this will be reflected here. amount is the quantity of asset to buy, displayed in the base currency. price is displayed in the quote currency.
- 
+
     ---------------------------------------------------------------------   Depth   ---------------------------------------------------------------------
-    
-    Identical to Full  but only returns metrics on the depth of the order book 
-    (the cummulative volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 
-    2%, 4%, 6%, 8% and 10% from the mid price) per snapshot. The Full specific parameters (such as slippage, slippage_ref 
+
+    Identical to Full  but only returns metrics on the depth of the order book
+    (the cummulative volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%,
+    2%, 4%, 6%, 8% and 10% from the mid price) per snapshot. The Full specific parameters (such as slippage, slippage_ref
     and limit_orders) are disabled but won't yield any errors when used. All data is returned in descending order.
 
     data_version is latest by default
@@ -438,12 +439,12 @@ class OrderBookSnapshots(KaikoData):
     timestamp	        The timestamp provided by the exchange. null when not provided.
     bid_volume_x	    The volume of bids placed within 0 and x% of the midprice.
     ask_volume_x	    The volume of asks placed within 0 and x% of the midprice.
- 
+
 
     ---------------------------------------------------------------------   Slippage   ---------------------------------------------------------------------
 
-    Identical to Full but only returns slippage for a given order size, either 
-    calculated from the best bid/ask or calculated from the mid price. The Full and Raw specific parameter limit_orders 
+    Identical to Full but only returns slippage for a given order size, either
+    calculated from the best bid/ask or calculated from the mid price. The Full and Raw specific parameter limit_orders
     is disabled but won't yield any errors when used. All data is returned in descending order.
 
     If you give it no slipapge, default being 0, it will give null results for ask and bid slippage
@@ -496,7 +497,7 @@ class OrderBookSnapshots(KaikoData):
                                 instrument = instrument)
 
         KaikoData.__init__(self, endpoint, self.req_params, params, client, extra_args = self.extra_args, **kwargs)
-        
+
         self._request_api()
         if len(self.df) == 0:
             print(f'No data was found for the time range selected. \n{self.query_api}')
@@ -547,14 +548,14 @@ class OrderBookAggregations(KaikoData):
     page_size is 100 by default
 
     ---------------------------------------------------------------------   Full   ---------------------------------------------------------------------
-    
-    Gives access to one month of historical 10% order book aggregated data. 
-    It returns metrics on the average depth of the order book (the cummulative volume of the base asset 
-    at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 4%, 6%, 8% and 10% from the mid price), 
-    the average spread, the average mid price and, when the slippage parameter is not empty, the average percentage 
-    of slippage for a given order size, either calculated from the best bid/ask or calculated from the mid price for 
-    a given interval. For each interval, the aggregates are calculated by taking the average metrics of each snapshot 
-    within that interval. For example, the aggregated 1 hour spread is calculated by taking all spreads of each snapshot 
+
+    Gives access to one month of historical 10% order book aggregated data.
+    It returns metrics on the average depth of the order book (the cummulative volume of the base asset
+    at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 4%, 6%, 8% and 10% from the mid price),
+    the average spread, the average mid price and, when the slippage parameter is not empty, the average percentage
+    of slippage for a given order size, either calculated from the best bid/ask or calculated from the mid price for
+    a given interval. For each interval, the aggregates are calculated by taking the average metrics of each snapshot
+    within that interval. For example, the aggregated 1 hour spread is calculated by taking all spreads of each snapshot
     within an hour and calculating the average. All data is returned in descending order.
 
     Parameters:
@@ -585,15 +586,15 @@ class OrderBookAggregations(KaikoData):
     bid_slippage	    The average percentage of price slippage for a market sell order over a specified interval.
 
     ---------------------------------------------------------------------   Depth   ---------------------------------------------------------------------
-    
-    Identical to Full but only returns metrics on average the depth of the order book (the cummulative 
-    volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 4%, 6%, 
-    8% and 10% from the mid price) per snapshot. For each interval, the aggregates are calculated by taking 
-    the average metrics of each snapshot within that interval. For example, the aggregated 1 hour spread is 
-    calculated by taking all spreads of each snapshot within an hour and calculating the average. The Full 
-    specific parameters (such as slippage, slippage_ref) are disabled but won't yield any errors when used. 
+
+    Identical to Full but only returns metrics on average the depth of the order book (the cummulative
+    volume of the base asset at 0.1%, 0.2%, 0.3%, 0.4%, 0.5%, 0.6%, 0.7%, 0.8%, 0.9%, 1%, 1.5%, 2%, 4%, 6%,
+    8% and 10% from the mid price) per snapshot. For each interval, the aggregates are calculated by taking
+    the average metrics of each snapshot within that interval. For example, the aggregated 1 hour spread is
+    calculated by taking all spreads of each snapshot within an hour and calculating the average. The Full
+    specific parameters (such as slippage, slippage_ref) are disabled but won't yield any errors when used.
     All data is returned in descending order.
-    
+
     Parameters:
 
     Parameter	                Required	Description
@@ -617,10 +618,10 @@ class OrderBookAggregations(KaikoData):
 
     ---------------------------------------------------------------------   Slippage  ---------------------------------------------------------------------
 
-    Identical to Full but only returns the average slippage for a given order size, either calculated from the best 
-    bid/ask or calculated from the mid price. For each interval, the aggregates are calculated by taking the 
-    average metrics of each snapshot within that interval. For example, the aggregated 1 hour spread is calculated 
-    by taking all spreads of each snapshot within an hour and calculating the average. All data is returned in 
+    Identical to Full but only returns the average slippage for a given order size, either calculated from the best
+    bid/ask or calculated from the mid price. For each interval, the aggregates are calculated by taking the
+    average metrics of each snapshot within that interval. For example, the aggregated 1 hour spread is calculated
+    by taking all spreads of each snapshot within an hour and calculating the average. All data is returned in
     descending order.
 
     Parameters:
@@ -662,7 +663,7 @@ class OrderBookAggregations(KaikoData):
             self.parameter_space = 'continuation_token,end_time,interval,page_size,sort,start_time,slippage,slippage_ref'.split(',')
         else:
             self.parameter_space = 'continuation_token,end_time,interval,page_size,sort,start_time'.split(',')
-    
+
         endpoints = {'Full': _URL_ORDER_BOOK_AGGREGATIONS_FULL, 'Depth': _URL_ORDER_BOOK_AGGREGATIONS_DEPTH, 'Slippage': _URL_ORDER_BOOK_AGGREGATIONS_SLIPPAGE}
         endpoint = endpoints[type_of_ob]
 
@@ -721,8 +722,8 @@ class Aggregates(KaikoData):
 
     ---------------------------------------------------------------------   OHLCV   ---------------------------------------------------------------------
 
-    Retrieves the OHLCV history for an instrument on an exchange. 
-    The interval parameter is suffixed with s, m, h or d to specify seconds, minutes, hours or days, 
+    Retrieves the OHLCV history for an instrument on an exchange.
+    The interval parameter is suffixed with s, m, h or d to specify seconds, minutes, hours or days,
     respectively. By making use of the sort parameter, data can be returned in ascending asc or descending desc order.
 
     Parameters:
@@ -751,8 +752,8 @@ class Aggregates(KaikoData):
 
     ---------------------------------------------------------------------   VWAP   ---------------------------------------------------------------------
 
-    Retrieves aggregated VWAP (volume-weighted average price) history for an instrument on an exchange. The interval 
-    parameter is suffixed with s, m, h or d to specify seconds, minutes, hours or days, respectively. By making use 
+    Retrieves aggregated VWAP (volume-weighted average price) history for an instrument on an exchange. The interval
+    parameter is suffixed with s, m, h or d to specify seconds, minutes, hours or days, respectively. By making use
     of the sort parameter, data can be returned in ascending asc or descending desc (default) order.
 
     Parameters:
@@ -769,16 +770,16 @@ class Aggregates(KaikoData):
     start_time	            No	        Starting time in ISO 8601 (inclusive).
     sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
 
-    Fields: 
+    Fields:
 
     Field	Description
     timestamp	Timestamp at which the interval begins.
     price	Volume-weighted average price. null when no trades reported.
 
     ---------------------------------------------------------------------   COHLCV   ---------------------------------------------------------------------
-        
-    Retrieves the trade count, OHLCV and VWAP history for an instrument on an exchange. The interval parameter is 
-    suffixed with s, m, h or d to specify seconds, minutes, hours or days, respectively. By making use of the sort parameter, 
+
+    Retrieves the trade count, OHLCV and VWAP history for an instrument on an exchange. The interval parameter is
+    suffixed with s, m, h or d to specify seconds, minutes, hours or days, respectively. By making use of the sort parameter,
     data can be returned in ascending asc (default) or descending desc order.
 
     Parameters:
@@ -797,7 +798,7 @@ class Aggregates(KaikoData):
     sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default desc
 
     Fields:
-    
+
     Field	    Description
     timestamp	Timestamp at which the interval begins.
     count	    Then number of trades. 0 when no trades reported.
@@ -807,7 +808,7 @@ class Aggregates(KaikoData):
     close	    Closing price of interval. null when no trades reported.
     volume	    Volume traded in interval. 0 when no trades reported.
     """
-    def __init__(self, exchange: str, instrument: str, type_of_aggregate: str = 'OHLCV', instrument_class: str = 'spot', params: dict = dict(page_size=100000), 
+    def __init__(self, exchange: str, instrument: str, type_of_aggregate: str = 'OHLCV', instrument_class: str = 'spot', params: dict = dict(page_size=100000),
                 data_version: str = 'latest', client: KaikoClient = None, **kwargs):
 
         # Initialize endpoint required parameters
@@ -842,9 +843,9 @@ class AssetPricing(KaikoData):
 
     ---------------------------------------------------------------------   SpotDirectExchangeRate   ---------------------------------------------------------------------
 
-    generates an aggregated price for an asset pair across all exchanges with spot markets for the pair. Only asset combinations which are actively being traded 
-    on one of our covered exchanges are being taken into account for the calculation of the price. Unsupported asset combinations will return no data. To return 
-    data used as input for the calculation of the aggregated price, set the sources parameter to true. Setting the sources parameter to false (default) will yield 
+    generates an aggregated price for an asset pair across all exchanges with spot markets for the pair. Only asset combinations which are actively being traded
+    on one of our covered exchanges are being taken into account for the calculation of the price. Unsupported asset combinations will return no data. To return
+    data used as input for the calculation of the aggregated price, set the sources parameter to true. Setting the sources parameter to false (default) will yield
     a faster response time. By making use of the sort parameter, data can be returned in ascending asc or descending desc order (default).
 
     Parameters:
@@ -861,7 +862,7 @@ class AssetPricing(KaikoData):
     start_time	            No	        Starting time in ISO 8601 (inclusive).
     sort	                No	        Return the data in ascending (asc) or descending (desc) order. Default is asc in API v1, desc in API v2.
     sources 	            No	        boolean. If true, returns all prices which were used to calculate aggregated price. Default is false
-    
+
     Fields:
 
     Field	    Description
@@ -873,13 +874,13 @@ class AssetPricing(KaikoData):
     ---------------------------------------------------------------------   SpotExchangeRate   ---------------------------------------------------------------------
 
 ### add assert V2 for data_version
-    Returns the price of any asset quoted in a Fiat currency within Open Exchange Rate. The USD price is calculated based on the path of the highest liquidity, 
-    with an additional step using forex rates to get the final fiat price. This means that, even though an asset might trade directly against all Open Exchange 
-    Rate currencies, the price might still be established by using cross-rates1. In cases where the most liquid path changed over time, this will be taken into 
-    account in the calculation of the price for each interval. To have an overview of what data was used to calculate the price, set the sources parameter to 
-    true. Setting the sourcesparameter to false (default) will yield a faster response time. By making use of the sort parameter, data can be returned in 
+    Returns the price of any asset quoted in a Fiat currency within Open Exchange Rate. The USD price is calculated based on the path of the highest liquidity,
+    with an additional step using forex rates to get the final fiat price. This means that, even though an asset might trade directly against all Open Exchange
+    Rate currencies, the price might still be established by using cross-rates1. In cases where the most liquid path changed over time, this will be taken into
+    account in the calculation of the price for each interval. To have an overview of what data was used to calculate the price, set the sources parameter to
+    true. Setting the sourcesparameter to false (default) will yield a faster response time. By making use of the sort parameter, data can be returned in
     ascending asc (default) or descending desc order.
-    
+
     Parameters:
 
     Parameter	            Required	Description
@@ -908,14 +909,14 @@ class AssetPricing(KaikoData):
 
     Outlier management:
 
-    median_perc	        Computes the median of all prices and excludes values that are off a certain % from the median. This is the simplest 
-                        and most intuitive strategy. As it makes use of the median, it's better suited against extreme outliers. 
+    median_perc	        Computes the median of all prices and excludes values that are off a certain % from the median. This is the simplest
+                        and most intuitive strategy. As it makes use of the median, it's better suited against extreme outliers.
                         Usage of outliers_threshold: 0.1 for 10%
-    zscore	            Computes the Z-score of each data point and excludes the ones for which zscore > outliers_threshold, 
-                        where outliers_threshold is specified by the user (i.e a good rules of thumb would be a value between 1.5 and 3.5). 
-                        Z-score signals how many standard deviations away a given observation is from the mean. This strategy is more susceptible 
+    zscore	            Computes the Z-score of each data point and excludes the ones for which zscore > outliers_threshold,
+                        where outliers_threshold is specified by the user (i.e a good rules of thumb would be a value between 1.5 and 3.5).
+                        Z-score signals how many standard deviations away a given observation is from the mean. This strategy is more susceptible
                         to extreme values, as it makes use of the mean. See kaiko docs
-    modified_zscore	    Similar to zscore but using the median instead of the mean, and the MAD (median absolute deviation) instead of standard 
+    modified_zscore	    Similar to zscore but using the median instead of the mean, and the MAD (median absolute deviation) instead of standard
                         deviation. This makes it less susceptible to extreme values. Usage of outliers_threshold: generally between 2 and 4
 
     """
@@ -956,7 +957,7 @@ def format_sources_cross_pricing(data_):
         base_for_df = []
         for pair in sources.keys():
             for k in range(len(sources[pair]['data'])):
-                exchange_rate = sources[pair]['data'][k] 
+                exchange_rate = sources[pair]['data'][k]
                 exchange_rate['pair'] = pair
                 base_for_df.append(exchange_rate)
             final_price = sources[pair]['price']
@@ -982,7 +983,7 @@ def format_sources_cross_pricing(data_):
         base_for_df = []
         for pair in sources.keys():
             for k in range(len(sources[pair]['data'])):
-                exchange_rate = sources[pair]['data'][k] 
+                exchange_rate = sources[pair]['data'][k]
                 exchange_rate['pair'] = pair
                 base_for_df.append(exchange_rate)
             final_price = sources[pair]['price']
@@ -1034,7 +1035,7 @@ class Valuation(KaikoData):
     Each response will only contain maximum 7 days of data. To get more data, the continuation_token should be used.
     The interval must be greater than twice the semi_length_window
     """
-    
+
     def __init__(self, bases: list[str], semi_length_window: str, percentages: list[str], quote: str, weights: list[str], params: dict = dict(), data_version: str = 'latest', client: KaikoClient = None, **kwargs):
         assert len(bases) >= 1 and len(bases) <= 5, "Bases needs to have at least one element and maximum 5"
         assert len(percentages) <= 5, "Number of percentages must be les or equal to 5"
@@ -1062,7 +1063,7 @@ class Valuation(KaikoData):
             return pd.DataFrame()
         if 'sources' in data_[0].keys(): ## hacky solution for now
             data_ = format_sources_valuation(data_)
-        
+
         df = pd.DataFrame(res['data'])
         df.set_index('timestamp', inplace=True)
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
@@ -1075,11 +1076,11 @@ def format_sources_valuation(data_):
 
 class DEXLiquidityEvents(KaikoData):
     """
-    Provides flows data about the mint & the burn (adds & removals) type transactions associated to tokens amounts 
+    Provides flows data about the mint & the burn (adds & removals) type transactions associated to tokens amounts
     registered on DEXs liquidity pools. This data is made available at a transactional level and at a block granularity.
 
     Those data are made available historically and live, and all at a block-by-block granularity. The supported exchanges are Uniswap, Sushiswap, Balancer, and Curve.
-    
+
     ---------------------------------------------------------------------   Events   ---------------------------------------------------------------------
 
     Parameters:
@@ -1107,7 +1108,7 @@ class DEXLiquidityEvents(KaikoData):
     amounts	            Amounts of the tokens	                                        See example
     datetime	        Timestamp at which the interval begins. In milliseconds.	    1650441900000
     metadata	        Only for Uniswap v3. Upper and lower ticker of the interval     {"lower_ticker": 190650, "upper_ticker": 195610}
-                        on which the liquidity is provided	
+                        on which the liquidity is provided
     """
 
     def __init__(self, params: dict = dict(), client=None, **kwargs):
@@ -1131,12 +1132,12 @@ class DEXLiquidityEvents(KaikoData):
 
 class DEXLiquiditySnapshots(KaikoData):
     """
-    Provides the total amount of reserves per token, made available at a liquidity pool level for all the covered 
-    DEXs. Specifically for Uniswap V3, this data is also made available in a per tick level, and enables the users to visualise the distribution of 
+    Provides the total amount of reserves per token, made available at a liquidity pool level for all the covered
+    DEXs. Specifically for Uniswap V3, this data is also made available in a per tick level, and enables the users to visualise the distribution of
     liquidity across ticks, for every block and liquidity pool available on Uniswap V3.
 
     Those data are made available historically and live by both endpoints, and all at a block-by-block granularity. The supported exchanges are Uniswap, Sushiswap, Balancer, and Curve.
-   
+
     ---------------------------------------------------------------------   Snapshots   ---------------------------------------------------------------------
 
     Parameters:
@@ -1148,7 +1149,7 @@ class DEXLiquiditySnapshots(KaikoData):
     start_time	    No	        Starting time in ISO 8601 (inclusive).	                                            2022-04-01T00:00:00.000Z
     end_time	    No	        Ending time in ISO 8601 (inclusive).	                                            2022-05-01T00:00:00.000Z
     sort	        No	        Returns the data in ascending (asc) or descending (desc) order. Default: desc.	    asc
-    
+
     Fields:
 
     Field	        Description	                                            Example
@@ -1211,13 +1212,11 @@ class DerivativesReference(KaikoData):
     strike_price	            option only. The strike price of the contract in USD.	                                                            60000
     """
 
-    def __init__(self, exchange: str, instrument_class: str = "future",
+    def __init__(self,
                  params: dict = dict(), client: KaikoClient = None, **kwargs):
 
-        self.req_params = dict(exchange=exchange,
-                               instrument_class=instrument_class,
-                               )
-        self.parameter_space = "instrument,latest_expiry,earliest_expiry,type".split(",")
+        self.req_params = dict()
+        self.parameter_space = "exchange,instrument_class,instrument,latest_expiry,earliest_expiry,type".split(",")
 
         endpoint = _URL_DERIVATIVES_REFERENCE
 
@@ -1233,16 +1232,12 @@ class DerivativesReference(KaikoData):
 
 class DerivativesRisk(KaikoData):
 
-    def __init__(self, exchange: str, instrument_class: str,
-                 instrument: str,  params: dict = dict(),
-                 client: KaikoClient = None, **kwargs):
+    def __init__(self,
+                 params: dict = dict(), client: KaikoClient = None, **kwargs):
 
-        self.req_params = dict(exchange=exchange,
-                               instrument_class=instrument_class,
-                               instrument=instrument
-                               )
+        self.req_params = dict()
 
-        self.parameter_space = "interval,page_size,sort,start_time,end_time".split(",")
+        self.parameter_space = "exchange,instrument_class,instrument,interval,page_size,sort,start_time,end_time".split(",")
 
         endpoint = _URL_DERIVATIVES_RISK
 
@@ -1261,8 +1256,26 @@ class DerivativesRisk(KaikoData):
 
 class DerivativesPrice(KaikoData):
 
-    def __init__(self) -> None:
-        pass
+    def __init__(self,
+                 params: dict = dict(), client: KaikoClient = None, **kwargs):
+
+        self.req_params = dict()
+
+        self.parameter_space = "exchange,instrument_class,instrument,interval,page_size,sort,start_time,end_time".split(",")
+
+        endpoint = _URL_DERIVATIVES_PRICE
+
+        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
+
+        self._request_api()
+
+    @staticmethod
+    def df_formatter(res, extra_args: dict = {}):
+        data_ = res['data']
+        df = pd.DataFrame(data_)
+        df.set_index('timestamp', inplace=True)
+        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
+        return df
 
 
 if __name__ == '__main__':
