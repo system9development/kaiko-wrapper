@@ -113,7 +113,7 @@ class KaikoClient:
     Valid `base_url` include 'us', 'eu', and 'rapidapi' (Rapid API no longer supported).
     """
 
-    def __init__(self, api_key: str = '', base_url: str = 'us'):
+    def __init__(self, api_key: str = '', base_url: str = 'eu'):
         assert base_url in ['us', 'eu'], "base_url  needs to be either us or eu"
         self.base_url = _BASE_URLS[base_url]
 
