@@ -1179,6 +1179,92 @@ class DEXLiquiditySnapshots(KaikoData):
         df.index = ut.convert_timestamp_unix_to_datetime(df.index)
         return df
 
+
+class DerivativesReference(KaikoData):
+    """
+    The reference API endpoint provides details of a contract, which is the smallest unit of derivatives trading in most cases. The details include
+    base asset, quote asset, contract size, contract size unit for all the types of derivatives, expiry for futures and options, and strike price for options.
+    You can find a list of instruments using a wildcard (*) in instrument. For example, using *-usdt as an instrument and perpetual-future as an
+    instrument_class lets you find any pereptual future instrument whose base asset is usdt.
+
+    Parameters
+    Parameter	        Required	Description	                                                                                                    Example
+    exchange	        Yes	        Should be one of the 7 exchanges currently supported	                                                        okex
+    instrument_class	Yes	        future, perpetual-future, or option	                                                                            future
+    instrument	        No	        Instrument code. See Instruments Reference Data Endpoint.	                                                    ethusd220624, btc*220624, *usdt, btc*may22*
+    latest_expiry	                No	future & option only. Used to retrieve futures and options that expire before this date and time	        2022-06-23T00:01:00.000Z
+    earliest_expiry	    No	        future & option only. Used to retrieve futures and options that expire after this date and time	                2022-06-25T23:59:00.000Z
+    type	            No	        option only. 'C' for call options and 'P' for put options	                                                    C, P
+
+
+    Fields
+    Field	                    Description	                                                                                                                Example
+    exchange	                The exchange where the specified instrument is being traded	okex
+    instrument_class	        Shows wether the specified instrument is future, perpetual-future or option	future
+    instrument	                The specified instrument	btcusd220624
+    base	                    The base asset of the instrument	btc
+    quote	                    The unit in which the instrument is quoted	usdt
+    contract_size	            Size of the contract	0.01
+    contract_size_unit	        Unit in which contract is denominated	btc
+    funding_rate_frequency	    perpetual-future only. Interval at which the funding rate is paid	8h
+    expiry	                    future & option only. Expiration date of the contract	2022-06-24 08:00:00 UTC
+    strike_price	            option only. The strike price of the contract in USD.	60000
+    """
+
+    def __init__(self, exchange: str, instrument_class: str = "future",
+                 params: dict = dict(), client: KaikoClient = None, **kwargs):
+
+        self.req_params = dict(exchange=exchange,
+                               instrument_class=instrument_class,
+                               )
+        self.parameter_space = "instrument,latest_expiry,earliest_expiry,type".split(",")
+
+        endpoint = _URL_DERIVATIVES_REFERENCE
+
+        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
+
+        self._request_api()
+
+    @staticmethod
+    def df_formatter(res, extra_args: dict = {}):
+        df = pd.DataFrame(res['data'])
+        return df
+
+
+class DerivativesRisk(KaikoData):
+
+    def __init__(self, exchange: str, instrument_class: str,
+                 instrument: str,  params: dict = dict(),
+                 client: KaikoClient = None, **kwargs):
+
+        self.req_params = dict(exchange=exchange,
+                               instrument_class=instrument_class,
+                               instrument=instrument
+                               )
+
+        self.parameter_space = "interval,page_size,sort,start_time,end_time".split(",")
+
+        endpoint = _URL_DERIVATIVES_RISK
+
+        KaikoData.__init__(self, endpoint, self.req_params, params, client, **kwargs)
+
+        self._request_api()
+
+    @staticmethod
+    def df_formatter(res, extra_args: dict = {}):
+        data_ = res['data']
+        df = pd.DataFrame(data_)
+        df.set_index('timestamp', inplace=True)
+        df.index = ut.convert_timestamp_unix_to_datetime(df.index)
+        return df
+
+
+class DerivativesPrice(KaikoData):
+
+    def __init__(self) -> None:
+        pass
+
+
 if __name__ == '__main__':
     FORMAT = "%(asctime)-15s %(levelname)-8s | %(lineno)d %(filename)s: %(message)s"
     logging.basicConfig(filename='/var/tmp/kaiko.log', level=logging.DEBUG, format=FORMAT, filemode='a')
