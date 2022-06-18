@@ -1192,23 +1192,23 @@ class DerivativesReference(KaikoData):
     exchange	        Yes	        Should be one of the 7 exchanges currently supported	                                                        okex
     instrument_class	Yes	        future, perpetual-future, or option	                                                                            future
     instrument	        No	        Instrument code. See Instruments Reference Data Endpoint.	                                                    ethusd220624, btc*220624, *usdt, btc*may22*
-    latest_expiry	                No	future & option only. Used to retrieve futures and options that expire before this date and time	        2022-06-23T00:01:00.000Z
+    latest_expiry       No	        future & option only. Used to retrieve futures and options that expire before this date and time	            2022-06-23T00:01:00.000Z
     earliest_expiry	    No	        future & option only. Used to retrieve futures and options that expire after this date and time	                2022-06-25T23:59:00.000Z
     type	            No	        option only. 'C' for call options and 'P' for put options	                                                    C, P
 
 
     Fields
-    Field	                    Description	                                                                                                                Example
-    exchange	                The exchange where the specified instrument is being traded	okex
-    instrument_class	        Shows wether the specified instrument is future, perpetual-future or option	future
-    instrument	                The specified instrument	btcusd220624
-    base	                    The base asset of the instrument	btc
-    quote	                    The unit in which the instrument is quoted	usdt
-    contract_size	            Size of the contract	0.01
-    contract_size_unit	        Unit in which contract is denominated	btc
-    funding_rate_frequency	    perpetual-future only. Interval at which the funding rate is paid	8h
-    expiry	                    future & option only. Expiration date of the contract	2022-06-24 08:00:00 UTC
-    strike_price	            option only. The strike price of the contract in USD.	60000
+    Field	                    Description	                                                                                                        Example
+    exchange	                The exchange where the specified instrument is being traded	                                                        okex
+    instrument_class	        Shows wether the specified instrument is future, perpetual-future or option	                                        future
+    instrument	                The specified instrument	                                                                                        btcusd220624
+    base	                    The base asset of the instrumen                                                                                     btc
+    quote	                    The unit in which the instrument is quoted	                                                                        usdt
+    contract_size	            Size of the contract	                                                                                            0.01
+    contract_size_unit	        Unit in which contract is denominated	                                                                            btc
+    funding_rate_frequency	    perpetual-future only. Interval at which the funding rate is paid	                                                8h
+    expiry	                    future & option only. Expiration date of the contract	                                                            2022-06-24 08:00:00 UTC
+    strike_price	            option only. The strike price of the contract in USD.	                                                            60000
     """
 
     def __init__(self, exchange: str, instrument_class: str = "future",
