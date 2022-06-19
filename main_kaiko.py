@@ -34,24 +34,38 @@ kc = kaiko.KaikoClient(api_key=kaiko_api_key)
 
 # df1 = ds.df
 
-dref = kaiko.DerivativesReference(exchange="okex",
-                                  instrument_class="future",
-                                  client=kc)
+# dref = kaiko.DerivativesReference(exchange="ftxx",
+#                                   instrument_class="future",
+#                                   client=kc)
 
-df_ref= dref.df
+# df_ref= dref.df
 
-drisk = kaiko.DerivativesRisk(exchange="okex",
-                              instrument_class="future",
-                              instrument="btcusd220624",
-                              interval="1d",
-                              client=kc)
+# drisk = kaiko.DerivativesRisk(exchange="okex",
+#                               instrument_class="future",
+#                               instrument="btcusd220624",
+#                               interval="1d",
+#                               client=kc)
 
-df_risk = drisk.df
+# df_risk = drisk.df
 
-dprice = kaiko.DerivativesPrice(exchange="okex",
-                                instrument_class="future",
-                                instrument="btcusd220624",
-                                interval="1h",
+interval = "1d"
+exchange = "okex"
+instrument_class = "future"
+instrument = "btcusd220624"
+
+instrument_class = "perpetual-future"
+instrument = "btc-usd"
+
+dprice = kaiko.DerivativesPrice(exchange=exchange,
+                                instrument_class=instrument_class,
+                                instrument=instrument,
+                                interval=interval,
                                 client=kc)
+
+# dprice = kaiko.DerivativesPrice(exchange="ftx",
+#                                 instrument_class="perpetual-future",
+#                                 instrument="btc-usd",
+#                                 interval="1h",
+                                # client=kc)
 
 df_price = dprice.df
